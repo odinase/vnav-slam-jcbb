@@ -7,10 +7,11 @@
 #include <unordered_set>
 #include <utility>
 #include <gtsam/inference/Symbol.h>
+#include <gtsam/slam/BetweenFactor.h>
 
 #include "jcbb/jcbb.h"
 #include "jcbb/utils.h"
-#include "jcbb/bearing_range_factor.h"
+// #include "jcbb/bearing_range_factor.h"
 
 namespace jcbb
 {
@@ -28,7 +29,7 @@ namespace jcbb
     return std::find(s.begin(), s.end(), k) != s.end();
   }
 
-  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::MatrixXd &sensorOffset, double ic_prob, double jc_prob)
+  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::VectorXd &sensorOffset, double ic_prob, double jc_prob)
       : estimates_(estimates),
         marginals_(marginals),
         measurements_(measurements),
@@ -67,7 +68,7 @@ namespace jcbb
     return nis < chi2inv(1 - jc_prob_, N * 2);
   }
 
-  void JCBB::push_successors_on_heap(FastMinHeap<Hypothesis>* min_heap, const Hypothesis &h) const
+  void JCBB::push_successors_on_heap(FastMinHeap<Hypothesis> *min_heap, const Hypothesis &h) const
   {
     // Should probably keep this in...
     // if (min_heap == nullptr) {
@@ -87,8 +88,6 @@ namespace jcbb
 
     gtsam::KeyVector associated_landmarks = h.associated_landmarks();
     Measurement meas = measurements_[next_measurement];
-    double range = meas(0);
-    double bearing = meas(1);
     gtsam::Matrix Hx, Hl;
 
     gtsam::SharedNoiseModel noise(meas_noise_);
@@ -99,10 +98,10 @@ namespace jcbb
       {
         continue;
       }
-
-      RangeBearingFactor factor(l, x_key_, range, bearing, sensorOffset_, noise);
-
+      // Apriltag poses should be T_xl, from landmark to robot, so we take the inverse.
       Landmark lmk = estimates_.at<Landmark>(l);
+
+      gtsam::BetweenFactor<gtsam::Pose3> factor(l, x_key_, lmk, noise);
       gtsam::Vector error = factor.evaluateError(x_pose_, lmk, Hx, Hl);
 
       Association a(next_measurement, l, Hx, Hl, error);
@@ -122,13 +121,13 @@ namespace jcbb
   {
     int N = h.num_associations();
     int n = State::dimension;
-    int m = Landmark::RowsAtCompileTime;
-    int d = Measurement::RowsAtCompileTime; // Measurement dim
+    int m = Landmark::dimension;
+    int d = Measurement::dimension; // Measurement dim
 
     gtsam::KeyVector joint_states;
     joint_states.push_back(x_key_);
     int num_associated_meas_to_lmk = 0;
-    for (const auto& asso : h.associations())
+    for (const auto &asso : h.associations())
     {
       if (asso->associated())
       {
@@ -205,6 +204,15 @@ namespace jcbb
           best_hypothesis = hypothesis;
         }
         push_successors_on_heap(&min_heap, hypothesis);
+      }
+    }
+    
+    // Append non associated measurements at bottom of interpretation tree
+    if (best_hypothesis.num_associations() < measurements_.size())
+    {
+      for (int m = best_hypothesis.num_associations(); m < measurements_.size(); m++)
+      {
+        best_hypothesis.extend(std::make_shared<Association>(m));
       }
     }
 

@@ -19,7 +19,7 @@ namespace jcbb
         Eigen::MatrixXd sensorOffset_;
 
     public:
-        RangeBearingFactor(const gtsam::Key &ki, const gtsam::Key &kj, double range, double bearing, const Eigen::MatrixXd& sensorOffset, gtsam::SharedNoiseModel &model)
+        RangeBearingFactor(const gtsam::Key &ki, const gtsam::Key &kj, double range, double bearing, const Eigen::VectorXd& sensorOffset, gtsam::SharedNoiseModel &model)
             : gtsam::NoiseModelFactor2<gtsam::Pose2, gtsam::Point2>(model, ki, kj),
               bearing_(bearing),
               range_(range),

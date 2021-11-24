@@ -2,6 +2,11 @@
 #define SLAM_NODE_H
 
 #include <ros/ros.h>
+
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
 #include <nav_msgs/Odometry.h>
 #include <apriltag_ros/AprilTagDetectionArray.h>
 #include <nav_msgs/Path.h>
@@ -14,19 +19,36 @@ class SLAM_node
 {
 
 public:
-    SlamNode(const ros::NodeHandle &nh);
+    SLAM_node(const ros::NodeHandle &nh);
     void publishTrajectory();
+    void publishLandmarkPoses();
+    void publishLandmarkVisualization();
 
 private:
     ros::NodeHandle nh_;
-    ros::Subscriber odom_sub_;
-    ros::Subscriber landmark_detections_sub_;
-    ros::Publisher trajectory_pub_;
-    ros::Publisher landmark_pos_pub_;
-    SLAM slam_;
+    
+  message_filters::Subscriber<apriltag_ros::AprilTagDetectionArray> sf_landmark_detections_;
+  message_filters::Subscriber<nav_msgs::Odometry> sf_odom_;
 
-    void odomCallback(const nav_msgs::OdometryConstPtr& odom_msg);
-    void landmarkDetectionsCallback(const apriltag_ros::AprilTagDetectionArrayConstPtr& landmark_detections_msg);
+  typedef message_filters::
+    sync_policies::ApproximateTime<apriltag_ros::AprilTagDetectionArray, nav_msgs::Odometry>
+    OdomLandmarkDetectionsSyncPolicy;
+
+    message_filters::Synchronizer<OdomLandmarkDetectionsSyncPolicy> sync_;
+
+    ros::Publisher latest_pose_pub_;
+    ros::Publisher trajectory_pub_;
+    ros::Publisher landmark_poses_pub_;
+     ros::Publisher landmark_viz_pub_;
+
+
+    SLAM slam_;
+    bool init_odom_ = false;
+    gtsam::Pose3 prev_odom_;
+
+    void odomLandmarkDetectionsCallback(const apriltag_ros::AprilTagDetectionArrayConstPtr& landmark_detections_msg, const nav_msgs::OdometryConstPtr& odom_msg);
+    gtsam::Pose3 convertOdomToRelative(const gtsam::Pose3& raw_odom);
+
 };
 
 } // namespace slam

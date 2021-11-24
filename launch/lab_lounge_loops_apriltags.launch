@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="bag" default="/home/odinase/Downloads/lab_lounge_loops_apriltag.bag"/>
+    <arg name="params" default="$(find slam)/params/params.yaml" />
+    <!-- 
+    <arg name="init_pos" /> -->
+    <!-- <node pkg="tf" type="static_transform_publisher" name="odom_frogner" args="$(arg init_pos) 0.25830473 -0.09007521  0.96155063 -0.02419722 odom odom_frogner 100" /> -->
+
+    <group ns="slam">
+        <rosparam file="$(arg params)" />
+        <node pkg="slam" type="slam_node" name="slam" output="screen" required="true" />
+    </group>
+
+    <node pkg="rosbag" type="play" name="player" args="--clock $(arg bag)"/>
+    <!-- output="screen"  -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find slam)/rviz/rviz.rviz" />
+
+</launch>

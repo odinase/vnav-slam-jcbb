@@ -11,7 +11,7 @@
 #include <iostream>
 
 #include <gtsam/base/FastVector.h>
-#include <gtsam/geometry/Pose2.h>
+#include <gtsam/geometry/Pose3.h>
 
 #include "MarginalMocks.h"
 #include "jcbb/Hypothesis.h"
@@ -19,9 +19,9 @@
 
 namespace jcbb
 {
-    using State = gtsam::Pose2;
-    using Landmark = gtsam::Point2;
-    using Measurement = gtsam::Vector2;
+    using State = gtsam::Pose3;
+    using Landmark = gtsam::Pose3;
+    using Measurement = gtsam::Pose3;
     template <class T>
     using FastMinHeap = std::priority_queue<T, gtsam::FastVector<T>, std::greater<T>>;
     double chi2inv(double p, unsigned int dim);
@@ -29,13 +29,13 @@ namespace jcbb
     class JCBB
     {
     public:
-        JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::MatrixXd& sensorOffset, double ic_prob, double jc_prob);
+        JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::VectorXd& sensorOffset, double ic_prob, double jc_prob);
         double joint_compatability(const Hypothesis &h) const;
         double individual_compatability(const Association &a) const;
         Hypothesis jcbb() const;
 
     private:
-    const Eigen::MatrixXd sensorOffset_;
+    const Eigen::VectorXd sensorOffset_;
         const gtsam::Values &estimates_;
         const Marginals &marginals_;
         const gtsam::FastVector<Measurement> &measurements_;

@@ -9,14 +9,15 @@
 #include <unordered_set>
 #include <gtsam/base/Matrix.h>
 #include <gtsam/inference/Key.h>
-#include "MarginalMocks.h"
+#include <gtsam/nonlinear/Marginals.h>
+// #include "MarginalMocks.h"
 
 namespace jcbb
 {
 
     // Config here between mock-up or GTSAM version.
-    using Marginals = MarginalsMock;
-    using JointMarginal = JointMarginalMock;
+    using Marginals = gtsam::Marginals;
+    using JointMarginal = gtsam::JointMarginal;
 
     struct Association
     {
