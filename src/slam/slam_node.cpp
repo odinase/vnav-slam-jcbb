@@ -92,6 +92,10 @@ namespace slam
   void SLAM_node::publishTrajectory()
   {
     gtsam::FastVector<gtsam::Pose3> trajectory = slam_.getTrajectory();
+    if (trajectory.size() == 0) {
+      ROS_INFO("No trajectory to publish");
+      return;
+    }
     nav_msgs::Path traj_msg;
     traj_msg.header.frame_id = "world";
     for (const auto pose : trajectory)
@@ -139,10 +143,10 @@ namespace slam
       landmark_points.push_back(landmark_point);
     }
     landmark_pc_msg.header.frame_id = "world";
-    landmark_pc_msg.type = visualization_msgs::Marker::POINTS;
+    landmark_pc_msg.type = visualization_msgs::Marker::CUBE_LIST;
     std_msgs::ColorRGBA color;
     color.r = 1.0;
-    color.g = 0.0;
+    color.g = 0.2;
     color.b = 0.0;
     color.a = 1.0;
     landmark_pc_msg.color = color;
@@ -150,6 +154,8 @@ namespace slam
     landmark_pc_msg.scale.x = 0.25;
     landmark_pc_msg.scale.y = 0.25;
     landmark_pc_msg.scale.z = 0.25;
+
+    ROS_INFO_STREAM("In total " << detected_apriltags_.size() << " aptiltags detected, and " << landmark_poses.size() << " landmarks\n");
 
     landmark_viz_pub_.publish(landmark_pc_msg);
   }
@@ -169,6 +175,7 @@ namespace slam
     for (const auto &detection : landmark_detections_msg->detections)
     {
       // TODO: Should here store gt id for later
+      detected_apriltags_.insert(detection.id[0]);
       gtsam::Pose3 lmk_measurement = T_oc_ * rosPoseToGtsamPose(detection.pose.pose.pose);
       measurements.push_back(lmk_measurement);
     }
@@ -209,8 +216,9 @@ int main(int argc, char **argv)
   slam::SLAM_node slam_node(nh);
 
   // ROS spin until process killed.
-  while (ros::ok())
-  {
-    ros::spin();
-  }
+  ros::spin();
+  // while (ros::ok())
+  // {
+  //   ros::spinOnce();
+  // }
 }

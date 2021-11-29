@@ -82,11 +82,11 @@ namespace slam
     addOdom(odom);
     if (num % optimization_rate_ != 0)
     {
+      // std::cout << "Num at " << num << ", skipping optimization!\n";
       num++;
       return;
     }
-
-    num = 0;
+    num = 1;
 
     // auto start = std::chrono::high_resolution_clock::now();
 

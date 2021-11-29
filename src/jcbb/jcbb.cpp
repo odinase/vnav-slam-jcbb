@@ -102,7 +102,6 @@ namespace jcbb
       {
         continue;
       }
-      // Apriltag poses should be T_xl, from landmark to robot, so we take the inverse.
       Landmark lmk = estimates_.at<Landmark>(l);
 
       gtsam::BetweenFactor<gtsam::Pose3> factor(x_key_, l, meas, noise);
@@ -111,7 +110,6 @@ namespace jcbb
       Association a(next_measurement, l, Hx, Hl, error);
       double nis = individual_compatability(a);
       double inv = chi2inv(1 - ic_prob_, d);
-      // std::cout << "Individual NIS for meas " << next_measurement << " and landmark " << gtsam::symbolIndex(l) << ": " << nis << "\nchi2inv: " << inv << "\n";
       if (nis < inv)
       {
         Hypothesis successor = h.extended(std::make_shared<Association>(a));
@@ -127,7 +125,7 @@ namespace jcbb
     int N = h.num_associations();
     int n = State::dimension;
     int m = Landmark::dimension;
-    int d = Measurement::dimension; // Measurement dim
+    int d = Measurement::dimension;
 
     gtsam::KeyVector joint_states;
     joint_states.push_back(x_key_);
@@ -167,17 +165,7 @@ namespace jcbb
 
     Eigen::MatrixXd Sjoint = H * Pjoint * H.transpose() + R;
 
-    // std::cout << "Sjoint of hypothesis\n";
-    // for (const auto& a: h.associations()) {
-    //   if (a->associated()) {
-    //     std::cout << "meas " << a->measurement << " landmark " << gtsam::symbolIndex(*a->landmark) << "\n";
-    //   }
-    // }
-
-    // std::cout << Sjoint << "\n";
-
     double nis = innov.transpose() * Sjoint.llt().solve(innov);
-    // std::cout << "Joint nis: " << nis << "\n";
     return nis;
   }
 

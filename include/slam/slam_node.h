@@ -6,11 +6,13 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-     #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
 
 #include <nav_msgs/Odometry.h>
 #include <apriltag_ros/AprilTagDetectionArray.h>
 #include <nav_msgs/Path.h>
+#include <gtsam/base/FastSet.h>
+#include <set>
 #include "slam/slam.h"
 #include "slam/types.h"
 
@@ -48,6 +50,7 @@ private:
     bool init_odom_;
     gtsam::Pose3 prev_odom_;
     gtsam::Pose3 T_oc_;
+    std::set<int> detected_apriltags_;
 
     void odomLandmarkDetectionsCallback(const apriltag_ros::AprilTagDetectionArrayConstPtr& landmark_detections_msg, const nav_msgs::OdometryConstPtr& odom_msg);
     gtsam::Pose3 convertOdomToRelative(const gtsam::Pose3& raw_odom);

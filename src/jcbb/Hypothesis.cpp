@@ -13,15 +13,6 @@ namespace jcbb
 
     int Hypothesis::num_associations() const
     {
-        // int n = 0;
-        // for (const auto &a : assos_)
-        // {
-        //     if (a->associated())
-        //     {
-        //         n++;
-        //     }
-        // }
-        // return n;
         return std::count_if(assos_.cbegin(), assos_.cend(), [](const Association::shared_ptr& a) {return a->associated();});
     }
 
@@ -105,6 +96,8 @@ namespace jcbb
                                                              *a->landmark});
             }
         }
+
+        return measurement_landmark_associations;
     }
 
 } // namespace jcbb
