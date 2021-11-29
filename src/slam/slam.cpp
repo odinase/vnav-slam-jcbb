@@ -6,6 +6,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/PriorFactor.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/DoglegOptimizer.h>
 
 #include <iostream>
 #include <chrono>
@@ -17,34 +18,42 @@ namespace slam
       : latest_pose_key_(0),
         latest_landmark_key_(0)
   {
-    // Add prior on first pose
-
-    // TODO: Should not be here, but oh well
-    gtsam::Vector6 sigmas;
-    double x_std = 1e-3;
-    double y_std = 1e-3;
-    double z_std = 1e-3;
-    double roll_std = 1e-3;
-    double pitch_std = 1e-3;
-    double yaw_std = 1e-3;
-    sigmas << x_std, y_std, z_std, roll_std, pitch_std, yaw_std;
-    gtsam::noiseModel::Diagonal::shared_ptr prior_noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-
-    graph_.add(gtsam::PriorFactor<gtsam::Pose3>(X(latest_pose_key_), gtsam::Pose3(), prior_noise));
-    estimates_.insert(X(latest_pose_key_), gtsam::Pose3());
-
-    // Let's use the same sigmas for everything for now
-    odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-    gtsam::Vector6 sigmas_meas = prior_noise->sigmas();
-    meas_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas_meas);
   }
 
-  void SLAM::initialize(double ic_prob, double jc_prob, int optimization_rate)
+  void SLAM::initialize(double ic_prob, double jc_prob, int optimization_rate, const std::vector<double> &odom_noise, const std::vector<double> &meas_noise, const std::vector<double> &prior_noise)
   {
     ic_prob_ = ic_prob;
     jc_prob_ = jc_prob;
     optimization_rate_ = optimization_rate;
+    gtsam::Vector6 odom_sigmas, meas_sigmas, prior_sigmas;
+    for (int i = 0; i < 6; i++)
+    {
+      if (i < 3)
+      {
+        odom_sigmas(i) = odom_noise[i];
+        meas_sigmas(i) = meas_noise[i];
+        prior_sigmas(i) = prior_noise[i];
+      }
+      else
+      {
+        odom_sigmas(i) = odom_noise[i] * M_PI / 180.0;
+        meas_sigmas(i) = meas_noise[i] * M_PI / 180.0;
+        prior_sigmas(i) = prior_noise[i] * M_PI / 180.0;
+      }
+    }
     std::cout << "Using ic_prob " << ic_prob << ", jc_prob " << jc_prob << ", optimization_rate " << optimization_rate << "\n";
+    std::cout << "Using odom sigmas\n"
+              << odom_sigmas << "\nmeas sigmas\n"
+              << meas_sigmas << "\nprior sigmas\n"
+              << prior_sigmas << "\n";
+
+    // Add prior on first pose
+    prior_noise_ = gtsam::noiseModel::Diagonal::Sigmas(prior_sigmas);
+    graph_.add(gtsam::PriorFactor<gtsam::Pose3>(X(latest_pose_key_), gtsam::Pose3(), prior_noise_));
+    estimates_.insert(X(latest_pose_key_), gtsam::Pose3());
+
+    odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas(odom_sigmas);
+    meas_noise_ = gtsam::noiseModel::Diagonal::Sigmas(meas_sigmas);
   }
 
   gtsam::FastVector<gtsam::Pose3> SLAM::getTrajectory() const
@@ -60,101 +69,71 @@ namespace slam
   gtsam::FastVector<gtsam::Pose3> SLAM::getLandmarkPoses() const
   {
     gtsam::FastVector<gtsam::Pose3> landmarks;
-    for (int i = 0; i < latest_landmark_key_; i++) {
+    for (int i = 0; i < latest_landmark_key_; i++)
+    {
       landmarks.push_back(estimates_.at<gtsam::Pose3>(L(i)));
     }
     return landmarks;
   }
 
-  void SLAM::processOdomMeasurementScan(const gtsam::Pose3 odom, const gtsam::FastVector<gtsam::Pose3> &measurements)
+  void SLAM::processOdomMeasurementScan(const gtsam::Pose3& odom, const gtsam::FastVector<gtsam::Pose3> &measurements)
   {
-    // std::cout << "\n\nMEASUREMENTS!!!\n\n";
     static int num = 1;
-    // Add odom to graph
     addOdom(odom);
     if (num % optimization_rate_ != 0)
     {
-      // std::cout << "Skipping! num is " << num << "\n";
       num++;
       return;
     }
 
     num = 0;
 
-    // std::cout << "Doing it all!\n";
-
     // auto start = std::chrono::high_resolution_clock::now();
 
-    // Predict measurements from stored landmarks (TODO: drop all landmarks not within field of view?)
-    // gtsam::FastVector<gtsam::Pose3> predicted_measurements = predictLandmarks();
-
-    // I don't like calling a function with "unsafe" in it, will have to think of better way of doing this...
-    // gtsam::Marginals marginals = gtsam::Marginals(isam_.getFactorsUnsafe(), current_estimates_);
     gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
 
     // Run all through JCBB
     jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, gtsam::Vector::Zero(3), ic_prob_, jc_prob_);
     jcbb::Hypothesis h = jcbb_.jcbb();
-    // std::cout << "\n\nCompleted JCBB! Hypothesis:\n";
+    // auto stop = std::chrono::high_resolution_clock::now();
+    // std::cout << "Spent " << std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count() << " s in JCBB.\n";
     const auto &assos = h.associations();
+    gtsam::Pose3 T_wb = estimates_.at<gtsam::Pose3>(X(latest_pose_key_));
     for (int i = 0; i < assos.size(); i++)
     {
       jcbb::Association::shared_ptr a = assos[i];
+      gtsam::Pose3 meas = measurements[a->measurement];
+      gtsam::Pose3 meas_world = T_wb * meas;
       if (a->associated())
       {
         std::cout << "associated meas " << a->measurement << " with landmark " << gtsam::symbolIndex(*a->landmark) << "\n";
-        graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), *a->landmark, measurements[i], meas_noise_));
+        graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), *a->landmark, meas, meas_noise_));
       }
       else
       {
-        std::cout << "meas " << a->measurement << " unassociated\n";
-        graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), L(latest_landmark_key_), measurements[i], meas_noise_));
-        estimates_.insert(L(latest_landmark_key_), measurements[i]);
-        // std::cout << "Added " << gtsam::symbolChr(L(latest_landmark_key_)) << gtsam::symbolIndex(L(latest_landmark_key_)) << "\n";
+        // std::cout << "meas " << a->measurement << " unassociated\n";
+        graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), L(latest_landmark_key_), meas, meas_noise_));
+        estimates_.insert(L(latest_landmark_key_), meas_world);
+        std::cout << "Added " << gtsam::symbolChr(L(latest_landmark_key_)) << gtsam::symbolIndex(L(latest_landmark_key_)) << "\n";
         incrementLatestLandmarkKey();
       }
       // We just inserted our first landmark, set prior
       if (latest_landmark_key_ == 1)
       {
-        // TODO: Should not be here, but oh well
-        gtsam::Vector6 sigmas;
-        double x_std = 1e-3;
-        double y_std = 1e-3;
-        double z_std = 1e-3;
-        double roll_std = 1e-3;
-        double pitch_std = 1e-3;
-        double yaw_std = 1e-3;
-        sigmas << x_std, y_std, z_std, roll_std, pitch_std, yaw_std;
-        gtsam::noiseModel::Diagonal::shared_ptr prior_noise = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-
-        graph_.add(gtsam::PriorFactor<gtsam::Pose3>(L(0), measurements[i], prior_noise));
+        // std::cout << "Added prior for landmark l0\n";
+        graph_.add(gtsam::PriorFactor<gtsam::Pose3>(L(0), meas_world, prior_noise_));
       }
     }
-    // std::cout << "\n\n";
 
-    // std::cout << "CAMEE GEERERER!!!\n";
-    // isam_.update(graph_, estimates_);
-    // for (int i = 0; i < 20; i++) {
-    //   isam_.update();
-    // }
-
-    // graph_.resize(0);
-    // estimates_.clear();
-
-    // Optimize the graph.
-    // if (num % optimization_rate == 0) {
-
-    gtsam::LevenbergMarquardtParams params;
+    gtsam::DoglegParams params;
     // params.setVerbosity("ERROR");
     params.setAbsoluteErrorTol(1e-08);
+    // start = std::chrono::high_resolution_clock::now();
     estimates_ =
-        gtsam::LevenbergMarquardtOptimizer(graph_, estimates_, params).optimize();
-    // }
+        gtsam::DoglegOptimizer(graph_, estimates_, params).optimize();
 
-    // auto stop = std::chrono::high_resolution_clock::now();
-    // std::cout << "Spent " << std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count() << " s in function.\n";
-    // Add factors
-    // If not initialize, do that with two factors
+    // stop = std::chrono::high_resolution_clock::now();
+    // std::cout << "Spent " << std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count() << " s optimizing.\n";
   }
 
   void SLAM::addOdom(const gtsam::Pose3 &odom)
@@ -162,7 +141,6 @@ namespace slam
     graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), X(latest_pose_key_ + 1), odom, odom_noise_));
     gtsam::Pose3 this_pose = latest_pose_ * odom;
     estimates_.insert(X(latest_pose_key_ + 1), this_pose);
-    // std::cout << "Added " << gtsam::symbolChr(X(latest_pose_key_ + 1)) << gtsam::symbolIndex(X(latest_pose_key_ + 1)) << "\n";
     latest_pose_ = this_pose;
     incrementLatestPoseKey();
   }

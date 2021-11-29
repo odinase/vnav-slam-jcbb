@@ -60,12 +60,33 @@ namespace slam
       ROS_ERROR_STREAM("Unable to read optimization_rate, shutting down");
       ros::shutdown();
     }
-    slam_.initialize(ic_prob, jc_prob, optimization_rate);
 
-    gtsam::Rot3 R_oc = gtsam::Rot3::Rx(-M_PI/2)*gtsam::Rot3::Ry(M_PI/2);
+    std::vector<double> odom_noise, meas_noise, prior_noise;
+
+    if (!nh.getParam("odom_noise", odom_noise))
+    {
+      ROS_ERROR_STREAM("Unable to read odom_noise, shutting down");
+      ros::shutdown();
+    }
+
+    if (!nh.getParam("meas_noise", meas_noise))
+    {
+      ROS_ERROR_STREAM("Unable to read meas_noise, shutting down");
+      ros::shutdown();
+    }
+
+    if (!nh.getParam("prior_noise", prior_noise))
+    {
+      ROS_ERROR_STREAM("Unable to read prior_noise, shutting down");
+      ros::shutdown();
+    }
+
+    slam_.initialize(ic_prob, jc_prob, optimization_rate, odom_noise, meas_noise, prior_noise);
+
+    gtsam::Rot3 R_oc = gtsam::Rot3::Rx(-M_PI / 2) * gtsam::Rot3::Ry(M_PI / 2);
     gtsam::Point3 t_oc = gtsam::Point3::Zero();
 
-    T_oc_ = gtsam::Pose3(R_oc, t_oc); 
+    T_oc_ = gtsam::Pose3(R_oc, t_oc);
   }
 
   void SLAM_node::publishTrajectory()
@@ -94,12 +115,12 @@ namespace slam
     odom_tf.header.frame_id = "world";
     odom_tf.child_frame_id = "body";
     int n = traj_msg.poses.size();
-    odom_tf.transform.translation.x = traj_msg.poses[n-1].pose.position.x;
-    odom_tf.transform.translation.y = traj_msg.poses[n-1].pose.position.y;
-    odom_tf.transform.translation.z = traj_msg.poses[n-1].pose.position.z;
-    odom_tf.transform.rotation = traj_msg.poses[n-1].pose.orientation;
+    odom_tf.transform.translation.x = traj_msg.poses[n - 1].pose.position.x;
+    odom_tf.transform.translation.y = traj_msg.poses[n - 1].pose.position.y;
+    odom_tf.transform.translation.z = traj_msg.poses[n - 1].pose.position.z;
+    odom_tf.transform.rotation = traj_msg.poses[n - 1].pose.orientation;
 
-    //send the transform
+    // send the transform
     pose_bc_.sendTransform(odom_tf);
   }
 
@@ -108,7 +129,8 @@ namespace slam
     const auto landmark_poses = slam_.getLandmarkPoses();
     visualization_msgs::Marker landmark_pc_msg;
     std::vector<geometry_msgs::Point> landmark_points;
-    for (const auto& landmark_pose : landmark_poses) {
+    for (const auto &landmark_pose : landmark_poses)
+    {
       geometry_msgs::Point landmark_point;
       gtsam::Point3 lmk_gtsam_point = landmark_pose.translation();
       landmark_point.x = lmk_gtsam_point(0);
@@ -134,8 +156,8 @@ namespace slam
 
   void SLAM_node::odomLandmarkDetectionsCallback(const apriltag_ros::AprilTagDetectionArrayConstPtr &landmark_detections_msg, const nav_msgs::OdometryConstPtr &odom_msg)
   {
-    static int scan =0;
-    std::cout << "Doing scan " << scan++ << "\n";
+    // static int scan = 0;
+    // std::cout << "Doing scan " << scan++ << "\n";
     // std::cout << "Number of measurements: " << landmark_detections_msg->detections.size() << "\n";
     // Simply change typings of things into SLAM compatible stuff, then pass on to frontend of SLAM
     // if (scan > 30) {
@@ -147,7 +169,7 @@ namespace slam
     for (const auto &detection : landmark_detections_msg->detections)
     {
       // TODO: Should here store gt id for later
-      gtsam::Pose3 lmk_measurement = T_oc_*rosPoseToGtsamPose(detection.pose.pose.pose);
+      gtsam::Pose3 lmk_measurement = T_oc_ * rosPoseToGtsamPose(detection.pose.pose.pose);
       measurements.push_back(lmk_measurement);
     }
 
@@ -162,13 +184,13 @@ namespace slam
     gtsam::Pose3 odom = gtsam::Pose3::identity();
     if (!init_odom_)
     {
-      prev_odom_ = raw_odom;
       init_odom_ = true;
     }
     else
     {
       odom = prev_odom_.inverse() * raw_odom;
     }
+    prev_odom_ = raw_odom;
     return odom;
   }
 

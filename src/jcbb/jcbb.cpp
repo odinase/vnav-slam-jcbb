@@ -8,6 +8,7 @@
 #include <utility>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/slam/BetweenFactor.h>
+#include <iostream>
 
 #include "jcbb/jcbb.h"
 #include "jcbb/utils.h"
