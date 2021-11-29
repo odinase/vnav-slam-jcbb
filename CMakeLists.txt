@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   nav_msgs
   message_filters
+  tf2
+  tf2_ros
   )
 
 # find_package(Boost 1.50 REQUIRED)

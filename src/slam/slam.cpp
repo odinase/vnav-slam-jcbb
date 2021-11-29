@@ -35,7 +35,8 @@ namespace slam
 
     // Let's use the same sigmas for everything for now
     odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
-    meas_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas);
+    gtsam::Vector6 sigmas_meas = prior_noise->sigmas();
+    meas_noise_ = gtsam::noiseModel::Diagonal::Sigmas(sigmas_meas);
   }
 
   void SLAM::initialize(double ic_prob, double jc_prob, int optimization_rate)
@@ -56,11 +57,11 @@ namespace slam
     return trajectory;
   }
 
-  gtsam::FastVector<gtsam::Point3> SLAM::getLandmarkPositions() const
+  gtsam::FastVector<gtsam::Pose3> SLAM::getLandmarkPoses() const
   {
-    gtsam::FastVector<gtsam::Point3> landmarks;
+    gtsam::FastVector<gtsam::Pose3> landmarks;
     for (int i = 0; i < latest_landmark_key_; i++) {
-      landmarks.push_back(estimates_.at<gtsam::Pose3>(L(i)).translation());
+      landmarks.push_back(estimates_.at<gtsam::Pose3>(L(i)));
     }
     return landmarks;
   }
@@ -82,7 +83,7 @@ namespace slam
 
     // std::cout << "Doing it all!\n";
 
-    auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
 
     // Predict measurements from stored landmarks (TODO: drop all landmarks not within field of view?)
     // gtsam::FastVector<gtsam::Pose3> predicted_measurements = predictLandmarks();
@@ -106,7 +107,7 @@ namespace slam
       }
       else
       {
-        // std::cout << "meas " << a->measurement << " unassociated\n";
+        std::cout << "meas " << a->measurement << " unassociated\n";
         graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), L(latest_landmark_key_), measurements[i], meas_noise_));
         estimates_.insert(L(latest_landmark_key_), measurements[i]);
         // std::cout << "Added " << gtsam::symbolChr(L(latest_landmark_key_)) << gtsam::symbolIndex(L(latest_landmark_key_)) << "\n";
@@ -150,7 +151,7 @@ namespace slam
         gtsam::LevenbergMarquardtOptimizer(graph_, estimates_, params).optimize();
     // }
 
-    auto stop = std::chrono::high_resolution_clock::now();
+    // auto stop = std::chrono::high_resolution_clock::now();
     // std::cout << "Spent " << std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count() << " s in function.\n";
     // Add factors
     // If not initialize, do that with two factors

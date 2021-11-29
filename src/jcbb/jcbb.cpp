@@ -60,12 +60,13 @@ namespace jcbb
   bool JCBB::feasible(const Hypothesis &h) const
   {
     int N = h.num_associations();
+    int d = Measurement::dimension;
     if (N == 0)
     {
       return true;
     }
     double nis = joint_compatability(h);
-    return nis < chi2inv(1 - jc_prob_, N * 2);
+    return nis < chi2inv(1 - jc_prob_, N * d);
   }
 
   void JCBB::push_successors_on_heap(FastMinHeap<Hypothesis> *min_heap, const Hypothesis &h) const
@@ -81,6 +82,8 @@ namespace jcbb
     { // We have no more measurements to check, so no successors
       return;
     }
+
+    int d  = Measurement::dimension;
 
     // Add unassociated hypothesis
     Hypothesis successor = h.extended(std::make_shared<Association>(next_measurement));
@@ -101,12 +104,13 @@ namespace jcbb
       // Apriltag poses should be T_xl, from landmark to robot, so we take the inverse.
       Landmark lmk = estimates_.at<Landmark>(l);
 
-      gtsam::BetweenFactor<gtsam::Pose3> factor(l, x_key_, lmk, noise);
+      gtsam::BetweenFactor<gtsam::Pose3> factor(x_key_, l, meas, noise);
       gtsam::Vector error = factor.evaluateError(x_pose_, lmk, Hx, Hl);
 
       Association a(next_measurement, l, Hx, Hl, error);
       double nis = individual_compatability(a);
-      double inv = chi2inv(1 - ic_prob_, 2);
+      double inv = chi2inv(1 - ic_prob_, d);
+      // std::cout << "Individual NIS for meas " << next_measurement << " and landmark " << gtsam::symbolIndex(l) << ": " << nis << "\nchi2inv: " << inv << "\n";
       if (nis < inv)
       {
         Hypothesis successor = h.extended(std::make_shared<Association>(a));
@@ -162,7 +166,17 @@ namespace jcbb
 
     Eigen::MatrixXd Sjoint = H * Pjoint * H.transpose() + R;
 
+    // std::cout << "Sjoint of hypothesis\n";
+    // for (const auto& a: h.associations()) {
+    //   if (a->associated()) {
+    //     std::cout << "meas " << a->measurement << " landmark " << gtsam::symbolIndex(*a->landmark) << "\n";
+    //   }
+    // }
+
+    // std::cout << Sjoint << "\n";
+
     double nis = innov.transpose() * Sjoint.llt().solve(innov);
+    // std::cout << "Joint nis: " << nis << "\n";
     return nis;
   }
 

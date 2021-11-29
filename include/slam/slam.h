@@ -29,7 +29,7 @@ namespace slam
         void processOdomMeasurementScan(const gtsam::Pose3 odom, const gtsam::FastVector<gtsam::Pose3> &measurements);
         void initialize(double ic_prob, double jc_prob, int optimization_rate);
         gtsam::FastVector<gtsam::Pose3> getTrajectory() const;
-        gtsam::FastVector<gtsam::Point3> getLandmarkPositions() const;
+        gtsam::FastVector<gtsam::Pose3> getLandmarkPoses() const;
 
     private:
         // gtsam::ISAM2 isam_;

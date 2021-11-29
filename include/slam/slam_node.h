@@ -6,6 +6,7 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+     #include <tf2_ros/transform_broadcaster.h>
 
 #include <nav_msgs/Odometry.h>
 #include <apriltag_ros/AprilTagDetectionArray.h>
@@ -39,12 +40,14 @@ private:
     ros::Publisher latest_pose_pub_;
     ros::Publisher trajectory_pub_;
     ros::Publisher landmark_poses_pub_;
-     ros::Publisher landmark_viz_pub_;
+    ros::Publisher landmark_viz_pub_;
+    tf2_ros::TransformBroadcaster pose_bc_;
 
 
     SLAM slam_;
-    bool init_odom_ = false;
+    bool init_odom_;
     gtsam::Pose3 prev_odom_;
+    gtsam::Pose3 T_oc_;
 
     void odomLandmarkDetectionsCallback(const apriltag_ros::AprilTagDetectionArrayConstPtr& landmark_detections_msg, const nav_msgs::OdometryConstPtr& odom_msg);
     gtsam::Pose3 convertOdomToRelative(const gtsam::Pose3& raw_odom);
