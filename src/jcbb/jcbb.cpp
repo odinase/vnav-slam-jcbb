@@ -30,12 +30,11 @@ namespace jcbb
     return std::find(s.begin(), s.end(), k) != s.end();
   }
 
-  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::VectorXd &sensorOffset, double ic_prob, double jc_prob)
+  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob, double jc_prob)
       : estimates_(estimates),
         marginals_(marginals),
         measurements_(measurements),
         meas_noise_(meas_noise),
-        sensorOffset_(sensorOffset),
         ic_prob_(ic_prob),
         jc_prob_(jc_prob)
   {

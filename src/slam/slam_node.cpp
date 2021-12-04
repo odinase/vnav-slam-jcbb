@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -9,8 +10,10 @@
 #include <apriltag_ros/AprilTagDetectionArray.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <limits>
 
 #include <functional>
+#include <fstream>
 
 #include <glog/logging.h>
 
@@ -24,9 +27,10 @@ namespace slam
 
   SLAM_node::SLAM_node(const ros::NodeHandle &nh) : nh_(nh),
                                                     init_odom_(false),
-                                                    sf_landmark_detections_(nh_, "/tag_detections", 1000),
-                                                    sf_odom_(nh_, "/zed/zed_node/odom", 1000),
-                                                    sync_(OdomLandmarkDetectionsSyncPolicy(1000), sf_landmark_detections_, sf_odom_)
+                                                    processed_messages_(0),
+                                                    sf_landmark_detections_(nh_, "/tag_detections", 6166),
+                                                    sf_odom_(nh_, "/zed/zed_node/odom", 6166),
+                                                    sync_(OdomLandmarkDetectionsSyncPolicy(6166), sf_landmark_detections_, sf_odom_)
   {
     ROS_INFO("Spinning up SLAM node.");
     sync_.registerCallback(std::bind(&SLAM_node::odomLandmarkDetectionsCallback,
@@ -83,6 +87,26 @@ namespace slam
 
     slam_.initialize(ic_prob, jc_prob, optimization_rate, odom_noise, meas_noise, prior_noise);
 
+    bool should_log = false;
+
+    if (!nh.getParam("should_log", should_log))
+    {
+      ROS_WARN("Unable to read prior_noise, won't log");
+      should_log = false;
+    }
+
+    int number_of_messages_to_process = 0;
+
+    if (!nh.getParam("number_of_messages_to_process", number_of_messages_to_process))
+    {
+      ROS_WARN("Unable to read number_of_messages_to_process, will process infinitely many messages");
+    }
+    if (number_of_messages_to_process < 1) {
+      number_of_messages_to_process = std::numeric_limits<int>::max();
+    }
+
+    number_of_messages_to_process_ = number_of_messages_to_process;
+
     gtsam::Rot3 R_oc = gtsam::Rot3::Rx(-M_PI / 2) * gtsam::Rot3::Ry(M_PI / 2);
     gtsam::Point3 t_oc = gtsam::Point3::Zero();
 
@@ -92,7 +116,8 @@ namespace slam
   void SLAM_node::publishTrajectory()
   {
     gtsam::FastVector<gtsam::Pose3> trajectory = slam_.getTrajectory();
-    if (trajectory.size() == 0) {
+    if (trajectory.size() == 0)
+    {
       ROS_INFO("No trajectory to publish");
       return;
     }
@@ -132,6 +157,7 @@ namespace slam
   {
     const auto landmark_poses = slam_.getLandmarkPoses();
     visualization_msgs::Marker landmark_pc_msg;
+    landmark_pc_msg.ns = "landmarks";
     std::vector<geometry_msgs::Point> landmark_points;
     for (const auto &landmark_pose : landmark_poses)
     {
@@ -155,7 +181,7 @@ namespace slam
     landmark_pc_msg.scale.y = 0.25;
     landmark_pc_msg.scale.z = 0.25;
 
-    ROS_INFO_STREAM("In total " << detected_apriltags_.size() << " aptiltags detected, and " << landmark_poses.size() << " landmarks\n");
+    // ROS_INFO_STREAM("In total " << detected_apriltags_.size() << " aptiltags detected, and " << landmark_poses.size() << " landmarks\n");
 
     landmark_viz_pub_.publish(landmark_pc_msg);
   }
@@ -184,6 +210,9 @@ namespace slam
 
     publishTrajectory();
     publishLandmarkVisualization();
+
+    processed_messages_++;
+    ROS_INFO_STREAM("Processed " << processed_messages_ << " / " << number_of_messages_to_process_ << " messages");
   }
 
   gtsam::Pose3 SLAM_node::convertOdomToRelative(const gtsam::Pose3 &raw_odom)
@@ -201,6 +230,27 @@ namespace slam
     return odom;
   }
 
+  void SLAM_node::logData() const
+  {
+    std::string logging_path = ros::package::getPath("slam") + "/logs";
+    std::fstream path_file(logging_path + "/path.txt", std::ios::out);
+    gtsam::FastVector<gtsam::Pose3> trajectory = slam_.getTrajectory();
+    // We project the pose onto 2D since everything is basically flat.
+    for (const auto &pose : trajectory)
+    {
+      path_file << pose.translation()(0) << " " << pose.translation()(1) << " " << pose.rotation().yaw() << "\n";
+    }
+    path_file.close();
+
+    std::fstream landmarks_file(logging_path + "/landmarks.txt", std::ios::out);
+    gtsam::FastVector<gtsam::Pose3> landmark_poses = slam_.getLandmarkPoses();
+    for (const auto &lmk : landmark_poses)
+    {
+      landmarks_file << lmk.translation()(0) << " " << lmk.translation()(1) << "\n";
+    }
+    landmarks_file.close();
+  }
+
 } // namespace slam
 
 int main(int argc, char **argv)
@@ -216,9 +266,16 @@ int main(int argc, char **argv)
   slam::SLAM_node slam_node(nh);
 
   // ROS spin until process killed.
-  ros::spin();
-  // while (ros::ok())
-  // {
-  //   ros::spinOnce();
-  // }
+  while (!slam_node.processed_all_messages())
+  {
+    ros::spinOnce();
+  }
+  ROS_INFO("Processed all messages!");
+
+  if (slam_node.should_log())
+  {
+    ROS_INFO("Logging data!");
+    slam_node.logData();
+    ROS_INFO("Logging data complete!");
+  }
 }

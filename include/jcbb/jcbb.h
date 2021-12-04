@@ -29,13 +29,12 @@ namespace jcbb
     class JCBB
     {
     public:
-        JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, const Eigen::VectorXd& sensorOffset, double ic_prob, double jc_prob);
+        JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob, double jc_prob);
         double joint_compatability(const Hypothesis &h) const;
         double individual_compatability(const Association &a) const;
         Hypothesis jcbb() const;
 
     private:
-    const Eigen::VectorXd sensorOffset_;
         const gtsam::Values &estimates_;
         const Marginals &marginals_;
         const gtsam::FastVector<Measurement> &measurements_;

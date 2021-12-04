@@ -93,7 +93,7 @@ namespace slam
     gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
 
     // Run all through JCBB
-    jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, gtsam::Vector::Zero(3), ic_prob_, jc_prob_);
+    jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, ic_prob_, jc_prob_);
     jcbb::Hypothesis h = jcbb_.jcbb();
     // auto stop = std::chrono::high_resolution_clock::now();
     // std::cout << "Spent " << std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count() << " s in JCBB.\n";
