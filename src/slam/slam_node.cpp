@@ -192,25 +192,19 @@ namespace slam
 
   void SLAM_node::odomLandmarkDetectionsCallback(const apriltag_ros::AprilTagDetectionArrayConstPtr &landmark_detections_msg, const nav_msgs::OdometryConstPtr &odom_msg)
   {
-    // static int scan = 0;
-    // std::cout << "Doing scan " << scan++ << "\n";
-    // std::cout << "Number of measurements: " << landmark_detections_msg->detections.size() << "\n";
-    // Simply change typings of things into SLAM compatible stuff, then pass on to frontend of SLAM
-    // if (scan > 30) {
-    //   ros::shutdown();
-    // }
     gtsam::Pose3 odom = convertOdomToRelative(rosPoseToGtsamPose(odom_msg->pose.pose));
-    // std::cout << "odom:\nt:\n" << odom.translation() << "\nrpy:\n" << odom.rotation().rpy() << "\n";
     gtsam::FastVector<gtsam::Pose3> measurements;
+    gtsam::FastVector<int> measured_apriltags;
     for (const auto &detection : landmark_detections_msg->detections)
     {
-      // TODO: Should here store gt id for later
       detected_apriltags_.insert(detection.id[0]);
+      measured_apriltags.push_back(detection.id[0]);
+  
       gtsam::Pose3 lmk_measurement = T_oc_ * rosPoseToGtsamPose(detection.pose.pose.pose);
       measurements.push_back(lmk_measurement);
     }
 
-    slam_.processOdomMeasurementScan(odom, measurements);
+    slam_.processOdomMeasurementScan(odom, measurements, measured_apriltags);
 
     publishTrajectory();
     publishLandmarkVisualization();
@@ -276,6 +270,18 @@ namespace slam
       raw_odom_file << odom.translation()(0) << " " << odom.translation()(1) << " " << odom.rotation().yaw() << "\n";
     }
     raw_odom_file.close();
+
+    std::fstream apriltag_lmk_assos_file(logging_path + "/april_lmk_assos.txt", std::ios::out);
+    const auto& apriltag_lmk_assos = slam_.getApriltagLandmarkAssos();
+    for (const auto &[apriltag_id, lmk_ids] : apriltag_lmk_assos)
+    {
+      apriltag_lmk_assos_file << apriltag_id << " ";
+      for (const auto& lmk: lmk_ids) {
+        apriltag_lmk_assos_file << gtsam::symbolIndex(lmk) << " ";
+      }
+      apriltag_lmk_assos_file << "\n";
+    }
+    apriltag_lmk_assos_file.close();
   }
 
 } // namespace slam

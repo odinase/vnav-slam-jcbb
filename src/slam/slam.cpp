@@ -76,27 +76,22 @@ namespace slam
     return landmarks;
   }
 
-  void SLAM::processOdomMeasurementScan(const gtsam::Pose3& odom, const gtsam::FastVector<gtsam::Pose3> &measurements)
+  void SLAM::processOdomMeasurementScan(const gtsam::Pose3& odom, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::FastVector<int>& measured_apriltags)
   {
     static int num = 1;
     addOdom(odom);
     if (num % optimization_rate_ != 0)
     {
-      // std::cout << "Num at " << num << ", skipping optimization!\n";
       num++;
       return;
     }
     num = 1;
-
-    // auto start = std::chrono::high_resolution_clock::now();
 
     gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
 
     // Run all through JCBB
     jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, ic_prob_, jc_prob_);
     jcbb::Hypothesis h = jcbb_.jcbb();
-    // auto stop = std::chrono::high_resolution_clock::now();
-    // std::cout << "Spent " << std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count() << " s in JCBB.\n";
     const auto &assos = h.associations();
     gtsam::Pose3 T_wb = estimates_.at<gtsam::Pose3>(X(latest_pose_key_));
     for (int i = 0; i < assos.size(); i++)
@@ -104,36 +99,32 @@ namespace slam
       jcbb::Association::shared_ptr a = assos[i];
       gtsam::Pose3 meas = measurements[a->measurement];
       gtsam::Pose3 meas_world = T_wb * meas;
+      int apriltag_id = measured_apriltags[a->measurement];
       if (a->associated())
       {
         std::cout << "associated meas " << a->measurement << " with landmark " << gtsam::symbolIndex(*a->landmark) << "\n";
         graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), *a->landmark, meas, meas_noise_));
+        // apriltag_lmk_assos_[apriltag_id].push_back(*a->landmark);
       }
       else
       {
-        // std::cout << "meas " << a->measurement << " unassociated\n";
         graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), L(latest_landmark_key_), meas, meas_noise_));
         estimates_.insert(L(latest_landmark_key_), meas_world);
         std::cout << "Added " << gtsam::symbolChr(L(latest_landmark_key_)) << gtsam::symbolIndex(L(latest_landmark_key_)) << "\n";
+        apriltag_lmk_assos_[apriltag_id].push_back(L(latest_landmark_key_));
         incrementLatestLandmarkKey();
       }
       // We just inserted our first landmark, set prior
       if (latest_landmark_key_ == 1)
       {
-        // std::cout << "Added prior for landmark l0\n";
         graph_.add(gtsam::PriorFactor<gtsam::Pose3>(L(0), meas_world, prior_noise_));
       }
     }
 
     gtsam::DoglegParams params;
-    // params.setVerbosity("ERROR");
     params.setAbsoluteErrorTol(1e-08);
-    // start = std::chrono::high_resolution_clock::now();
     estimates_ =
         gtsam::DoglegOptimizer(graph_, estimates_, params).optimize();
-
-    // stop = std::chrono::high_resolution_clock::now();
-    // std::cout << "Spent " << std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count() << " s optimizing.\n";
   }
 
   void SLAM::addOdom(const gtsam::Pose3 &odom)
