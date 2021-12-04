@@ -49,6 +49,7 @@ namespace slam
     std::set<int> detected_apriltags_;
     int number_of_messages_to_process_;
     int processed_messages_;
+    gtsam::FastVector<gtsam::Pose3> raw_odoms_;
 
     void odomLandmarkDetectionsCallback(const apriltag_ros::AprilTagDetectionArrayConstPtr &landmark_detections_msg, const nav_msgs::OdometryConstPtr &odom_msg);
     gtsam::Pose3 convertOdomToRelative(const gtsam::Pose3 &raw_odom);
@@ -61,6 +62,7 @@ namespace slam
     void logData() const;
     bool should_log() const { return should_log_; }
     bool processed_all_messages() const {return processed_messages_ >= number_of_messages_to_process_; }
+    void logOdom(const gtsam::Pose3& odom);
   };
 
 } // namespace slam

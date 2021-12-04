@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <ros/callback_queue.h>
+
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseWithCovariance.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -91,9 +93,11 @@ namespace slam
 
     if (!nh.getParam("should_log", should_log))
     {
-      ROS_WARN("Unable to read prior_noise, won't log");
+      ROS_WARN("Unable to read should_log, won't log");
       should_log = false;
     }
+
+    should_log_ = should_log;
 
     int number_of_messages_to_process = 0;
 
@@ -217,6 +221,8 @@ namespace slam
 
   gtsam::Pose3 SLAM_node::convertOdomToRelative(const gtsam::Pose3 &raw_odom)
   {
+    logOdom(raw_odom);
+
     gtsam::Pose3 odom = gtsam::Pose3::identity();
     if (!init_odom_)
     {
@@ -228,6 +234,20 @@ namespace slam
     }
     prev_odom_ = raw_odom;
     return odom;
+  }
+
+  void SLAM_node::logOdom(const gtsam::Pose3& odom) {
+    if (!init_odom_) {
+      if (raw_odoms_.size() > 0) {
+        ROS_ERROR("raw_odoms_ should be empty before init!");
+        ros::shutdown();
+      }
+      raw_odoms_.push_back(gtsam::Pose3());
+    } else {
+      gtsam::Pose3 rel_odom = prev_odom_.inverse() * odom;
+      gtsam::Pose3 new_pose = raw_odoms_.back() * rel_odom;
+      raw_odoms_.push_back(new_pose);
+    }
   }
 
   void SLAM_node::logData() const
@@ -249,6 +269,13 @@ namespace slam
       landmarks_file << lmk.translation()(0) << " " << lmk.translation()(1) << "\n";
     }
     landmarks_file.close();
+
+    std::fstream raw_odom_file(logging_path + "/odom.txt", std::ios::out);
+    for (const auto &odom : raw_odoms_)
+    {
+      raw_odom_file << odom.translation()(0) << " " << odom.translation()(1) << " " << odom.rotation().yaw() << "\n";
+    }
+    raw_odom_file.close();
   }
 
 } // namespace slam
@@ -265,10 +292,11 @@ int main(int argc, char **argv)
   ros::NodeHandle nh;
   slam::SLAM_node slam_node(nh);
 
-  // ROS spin until process killed.
-  while (!slam_node.processed_all_messages())
+  // ROS spin until process killed or all desired messages are processed.
+  while (ros::ok() && !slam_node.processed_all_messages())
   {
-    ros::spinOnce();
+    // Process just the oldest callback, not all that are accumulated
+    ros::getGlobalCallbackQueue()->callOne(ros::WallDuration(0));
   }
   ROS_INFO("Processed all messages!");
 
