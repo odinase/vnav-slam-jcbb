@@ -87,7 +87,35 @@ namespace slam
       ros::shutdown();
     }
 
-    slam_.initialize(ic_prob, jc_prob, optimization_rate, odom_noise, meas_noise, prior_noise);
+    int association_method_int;
+    AssociationMethod association_method;
+
+    if (!nh.getParam("association_method", association_method_int))
+    {
+      ROS_WARN("Unable to read association_method, using JCBB");
+      association_method = AssociationMethod::JCBB;
+    }
+
+    switch (association_method_int)
+    {
+    case 0:
+    {
+      association_method = AssociationMethod::JCBB;
+      break;
+    }
+    case 1:
+    {
+      association_method = AssociationMethod::ML;
+      break;
+    }
+    default:
+    {
+      association_method = AssociationMethod::JCBB;
+      break;
+    }
+    }
+
+    slam_.initialize(ic_prob, jc_prob, optimization_rate, odom_noise, meas_noise, prior_noise, association_method);
 
     bool should_log = false;
 
@@ -105,7 +133,8 @@ namespace slam
     {
       ROS_WARN("Unable to read number_of_messages_to_process, will process infinitely many messages");
     }
-    if (number_of_messages_to_process < 1) {
+    if (number_of_messages_to_process < 1)
+    {
       number_of_messages_to_process = std::numeric_limits<int>::max();
     }
 
@@ -199,7 +228,7 @@ namespace slam
     {
       detected_apriltags_.insert(detection.id[0]);
       measured_apriltags.push_back(detection.id[0]);
-  
+
       gtsam::Pose3 lmk_measurement = T_oc_ * rosPoseToGtsamPose(detection.pose.pose.pose);
       measurements.push_back(lmk_measurement);
     }
@@ -230,14 +259,19 @@ namespace slam
     return odom;
   }
 
-  void SLAM_node::logOdom(const gtsam::Pose3& odom) {
-    if (!init_odom_) {
-      if (raw_odoms_.size() > 0) {
+  void SLAM_node::logOdom(const gtsam::Pose3 &odom)
+  {
+    if (!init_odom_)
+    {
+      if (raw_odoms_.size() > 0)
+      {
         ROS_ERROR("raw_odoms_ should be empty before init!");
         ros::shutdown();
       }
       raw_odoms_.push_back(gtsam::Pose3());
-    } else {
+    }
+    else
+    {
       gtsam::Pose3 rel_odom = prev_odom_.inverse() * odom;
       gtsam::Pose3 new_pose = raw_odoms_.back() * rel_odom;
       raw_odoms_.push_back(new_pose);
@@ -272,16 +306,27 @@ namespace slam
     raw_odom_file.close();
 
     std::fstream apriltag_lmk_assos_file(logging_path + "/april_lmk_assos.txt", std::ios::out);
-    const auto& apriltag_lmk_assos = slam_.getApriltagLandmarkAssos();
+    const auto &apriltag_lmk_assos = slam_.getApriltagLandmarkAssos();
     for (const auto &[apriltag_id, lmk_ids] : apriltag_lmk_assos)
     {
       apriltag_lmk_assos_file << apriltag_id << " ";
-      for (const auto& lmk: lmk_ids) {
+      for (const auto &lmk : lmk_ids)
+      {
         apriltag_lmk_assos_file << gtsam::symbolIndex(lmk) << " ";
       }
       apriltag_lmk_assos_file << "\n";
     }
     apriltag_lmk_assos_file.close();
+
+    std::fstream nis_consistency_file(logging_path + "/nis_consistency.txt", std::ios::out);
+    const auto &hypotheses = slam_.getChosenHypotheses();
+
+    for (const auto &h : hypotheses)
+    {
+      nis_consistency_file << h.get_nis() << " " << h.num_associations() * gtsam::Pose3::dimension << "\n";
+    }
+
+    nis_consistency_file.close();
   }
 
 } // namespace slam

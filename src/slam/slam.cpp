@@ -22,7 +22,7 @@ namespace slam
   {
   }
 
-  void SLAM::initialize(double ic_prob, double jc_prob, int optimization_rate, const std::vector<double> &odom_noise, const std::vector<double> &meas_noise, const std::vector<double> &prior_noise)
+  void SLAM::initialize(double ic_prob, double jc_prob, int optimization_rate, const std::vector<double> &odom_noise, const std::vector<double> &meas_noise, const std::vector<double> &prior_noise, AssociationMethod association_method)
   {
     ic_prob_ = ic_prob;
     jc_prob_ = jc_prob;
@@ -56,6 +56,18 @@ namespace slam
 
     odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas(odom_sigmas);
     meas_noise_ = gtsam::noiseModel::Diagonal::Sigmas(meas_sigmas);
+
+    association_method_ = association_method;
+    std::cout << "Using association method ";
+    switch (association_method)
+    {
+    case AssociationMethod::JCBB:
+      std::cout << "JCBB\n";
+      break;
+    case AssociationMethod::ML:
+      std::cout << "ML\n";
+      break;
+    }
   }
 
   gtsam::FastVector<gtsam::Pose3> SLAM::getTrajectory() const
@@ -78,7 +90,7 @@ namespace slam
     return landmarks;
   }
 
-  void SLAM::processOdomMeasurementScan(const gtsam::Pose3& odom, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::FastVector<int>& measured_apriltags)
+  void SLAM::processOdomMeasurementScan(const gtsam::Pose3 &odom, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::FastVector<int> &measured_apriltags)
   {
     static int num = 1;
     addOdom(odom);
@@ -91,12 +103,22 @@ namespace slam
 
     gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
 
-    // Run all through JCBB
-    // jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, ic_prob_, jc_prob_);
-    // jcbb::Hypothesis h = jcbb_.associate();
-
-    ml::MaximumLikelihood ml_(estimates_, marginals, measurements, meas_noise_, ic_prob_);
-    ml::Hypothesis h = ml_.associate();
+    jcbb::Hypothesis h = jcbb::Hypothesis::empty_hypothesis();
+    switch (association_method_)
+    {
+    case AssociationMethod::JCBB:
+    {
+      jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, ic_prob_, jc_prob_);
+      h = jcbb_.associate();
+      break;
+    }
+    case AssociationMethod::ML:
+    {
+      ml::MaximumLikelihood ml_(estimates_, marginals, measurements, meas_noise_, ic_prob_);
+      h = ml_.associate();
+      break;
+    }
+    }
 
     const auto &assos = h.associations();
     gtsam::Pose3 T_wb = estimates_.at<gtsam::Pose3>(X(latest_pose_key_));
@@ -110,7 +132,6 @@ namespace slam
       {
         std::cout << "associated meas " << a->measurement << " with landmark " << gtsam::symbolIndex(*a->landmark) << "\n";
         graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), *a->landmark, meas, meas_noise_));
-        // apriltag_lmk_assos_[apriltag_id].push_back(*a->landmark);
       }
       else
       {
@@ -125,6 +146,10 @@ namespace slam
       {
         graph_.add(gtsam::PriorFactor<gtsam::Pose3>(L(0), meas_world, prior_noise_));
       }
+    }
+    if (h.num_associations() > 0)
+    {
+      hypotheses_.push_back(h);
     }
 
     gtsam::DoglegParams params;

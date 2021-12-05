@@ -35,6 +35,7 @@ private:
 
 public:
         MaximumLikelihood(const gtsam::Values &estimates, const gtsam::Marginals &marginals_, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob);
+        double joint_compatability(const Hypothesis &h) const;
         double individual_compatability(const Association &a) const;
         Hypothesis associate() const;
 };

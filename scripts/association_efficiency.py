@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.stats import chi2
+import matplotlib.pyplot as plt
 
 def association_statistics():
     assos = dict()
@@ -23,6 +25,28 @@ def association_statistics():
     print(f"Number of apriltags with multiple landmarks associated with it (failed associations): {failed_assos}")
     print(f"{failed_assos/num_apriltags*100.0:.2f}% of the apriltags")
     print(f"Number of landmarks: {num_landmarks}")
+
+    nis_consistency = np.loadtxt('./logs/nis_consistency.txt')
+    nis, dof = nis_consistency.T
+    alpha = 0.05 # Hypothesis level
+
+    dof = dof.astype(int)
+    valid_hypotheses = dof != 0
+    dof = dof[valid_hypotheses]
+    nis = nis[valid_hypotheses]
+
+    bounds = np.array([alpha/2, 1-alpha/2])
+
+    lower, upper = chi2.cdf(bounds.reshape(-1, 1), dof)
+
+    fig, ax = plt.subplots()
+    ax.semilogy(lower, '--', label='lower')
+    ax.semilogy(upper, '--', label='upper')
+    ax.semilogy(nis, label='hypothesis nis')
+    num_inside = ((lower <= nis) & (nis <= upper)).sum()
+    ax.set_title(f"NIS inside {(1-alpha)*100:.2f}% confidence interval: {num_inside/nis.shape[0]*100:.3f}%")
+
+    plt.show()
 
     return assos
 
