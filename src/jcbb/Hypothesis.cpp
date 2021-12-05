@@ -9,12 +9,13 @@
 namespace jcbb
 {
     Association::Association(int m) : measurement(m), landmark({}) {}
-    Association::Association(int m, gtsam::Key l, const gtsam::Matrix &Hx, const gtsam::Matrix &Hl, const gtsam::Vector& error) : measurement(m), landmark(l), Hx(Hx), Hl(Hl), error(error) {}
-    Association::Association(int m, gtsam::Key l, const gtsam::Vector& error) : measurement(m), landmark(l), error(error) {}
+    Association::Association(int m, gtsam::Key l, const gtsam::Matrix &Hx, const gtsam::Matrix &Hl, const gtsam::Vector &error) : measurement(m), landmark(l), Hx(Hx), Hl(Hl), error(error) {}
+    Association::Association(int m, gtsam::Key l) : measurement(m), landmark(l) {}
 
     int Hypothesis::num_associations() const
     {
-        return std::count_if(assos_.cbegin(), assos_.cend(), [](const Association::shared_ptr& a) {return a->associated();});
+        return std::count_if(assos_.cbegin(), assos_.cend(), [](const Association::shared_ptr &a)
+                             { return a->associated(); });
     }
 
     int Hypothesis::num_measurements() const
@@ -99,6 +100,40 @@ namespace jcbb
         }
 
         return measurement_landmark_associations;
+    }
+
+    // Will be a pretty naive implementation, but w/e
+    void Hypothesis::fill_with_unassociated_measurements(int tot_num_measurements)
+    {
+        gtsam::FastSet<int> all_measurements;
+        for (int i = 0; i < tot_num_measurements; i++)
+        {
+            all_measurements.insert(i);
+        }
+        gtsam::FastSet<int> meas_in_hypothesis;
+        for (const auto &a : assos_)
+        {
+            meas_in_hypothesis.insert(a->measurement);
+        }
+
+        std::vector<int> v(tot_num_measurements);
+
+        std::vector<int>::iterator it;
+
+        // Don't think we need to sort this...
+        std::sort(all_measurements.begin(), all_measurements.end());
+        std::sort(meas_in_hypothesis.begin(), meas_in_hypothesis.end());
+
+        it = std::set_difference(all_measurements.begin(), all_measurements.end(),
+                                 meas_in_hypothesis.begin(), meas_in_hypothesis.end(),
+                                 v.begin());
+        v.resize(it - v.begin());
+
+        for (const auto &vv : v)
+        {
+            assos_.push_back(std::make_shared<Association>(vv));
+        }
+        std::sort(assos_.begin(), assos_.end());
     }
 
 } // namespace jcbb

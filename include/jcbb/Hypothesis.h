@@ -21,9 +21,9 @@ namespace jcbb
 
     struct Association
     {
-        Association(int m);
+        explicit Association(int m);
         Association(int m, gtsam::Key l, const gtsam::Matrix& Hx, const gtsam::Matrix& Hl, const gtsam::Vector& error);
-        Association(int m, gtsam::Key l, const gtsam::Vector& error); // For ML
+        Association(int m, gtsam::Key l); // For ML
         typedef std::shared_ptr<Association> shared_ptr;
         int measurement;
         std::optional<gtsam::Key> landmark;
@@ -77,6 +77,7 @@ namespace jcbb
         } 
 
     gtsam::FastVector<std::pair<int, gtsam::Key>> measurement_landmark_associations() const;
+    void fill_with_unassociated_measurements(int tot_num_measurements);
     };
     
 } // namespace jcbb

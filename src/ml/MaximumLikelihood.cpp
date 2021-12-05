@@ -58,12 +58,13 @@ namespace ml
       double lowest_nis = std::numeric_limits<double>::infinity();
 
       std::pair<int, double> smallest_innovation(-1, 0.0);
+      gtsam::Matrix Hx, Hl;
       for (const auto &l : landmark_keys_)
       {
         gtsam::Pose3 lmk = estimates_.at<gtsam::Pose3>(l);
         gtsam::BetweenFactor<gtsam::Pose3> factor(x_key_, l, meas, noise);
-        gtsam::Vector error = factor.evaluateError(x_pose_, lmk);
-        Association a(i, l, error);
+        gtsam::Vector error = factor.evaluateError(x_pose_, lmk, Hx, Hl);
+        Association a(i, l, Hx, Hl, error);
         double nis = individual_compatability(a);
 
         // TODO: Refactor out things not JCBB from jcbb
@@ -75,14 +76,14 @@ namespace ml
           if (nis < lowest_nis)
           {
             lowest_nis = nis;
-            smallest_innovation = {l, nis};
+            smallest_innovation = {gtsam::symbolIndex(l), nis};
           }
         }
       }
       // We found a valid association
       if (smallest_innovation.first != -1)
       {
-        lmk_measurement_assos[smallest_innovation.first].push_back({i, smallest_innovation.second});
+        lmk_measurement_assos[L(smallest_innovation.first)].push_back({i, smallest_innovation.second});
       }
     }
 
@@ -92,9 +93,11 @@ namespace ml
     {
       auto p = std::min_element(ms.begin(), ms.end(), [](const auto &p1, const auto &p2)
                                 { return p1.second < p2.second; });
-      Association::shared_ptr a{std::make_shared<Association>(l, p->first, p->second)};
+      Association::shared_ptr a = std::make_shared<Association>(p->first, l);
       h.extend(a);
     }
+    
+
     return h;
   }
 } // namespace ml

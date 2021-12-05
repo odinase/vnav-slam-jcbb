@@ -2,6 +2,8 @@
 #include "jcbb/jcbb.h"
 #include "jcbb/Hypothesis.h"
 
+#include "ml/MaximumLikelihood.h"
+
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/PriorFactor.h>
@@ -90,8 +92,12 @@ namespace slam
     gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
 
     // Run all through JCBB
-    jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, ic_prob_, jc_prob_);
-    jcbb::Hypothesis h = jcbb_.associate();
+    // jcbb::JCBB jcbb_(estimates_, marginals, measurements, meas_noise_, ic_prob_, jc_prob_);
+    // jcbb::Hypothesis h = jcbb_.associate();
+
+    ml::MaximumLikelihood ml_(estimates_, marginals, measurements, meas_noise_, ic_prob_);
+    ml::Hypothesis h = ml_.associate();
+
     const auto &assos = h.associations();
     gtsam::Pose3 T_wb = estimates_.at<gtsam::Pose3>(X(latest_pose_key_));
     for (int i = 0; i < assos.size(); i++)

@@ -60,6 +60,7 @@ target_link_libraries(jcbb
 
   add_library(ml
   src/ml/MaximumLikelihood.cpp
+  src/jcbb/jcbb.cpp
   src/jcbb/Hypothesis.cpp
 )
 
@@ -68,8 +69,6 @@ target_link_libraries(ml
   Eigen3::Eigen
   gtsam
   )
-
-
 
 add_library(slam
   src/slam/slam.cpp
