@@ -105,19 +105,18 @@ namespace jcbb
     // Will be a pretty naive implementation, but w/e
     void Hypothesis::fill_with_unassociated_measurements(int tot_num_measurements)
     {
-        gtsam::FastSet<int> all_measurements;
+        std::vector<int> all_measurements;
         for (int i = 0; i < tot_num_measurements; i++)
         {
-            all_measurements.insert(i);
+            all_measurements.push_back(i);
         }
-        gtsam::FastSet<int> meas_in_hypothesis;
+        std::vector<int> meas_in_hypothesis;
         for (const auto &a : assos_)
         {
-            meas_in_hypothesis.insert(a->measurement);
+            meas_in_hypothesis.push_back(a->measurement);
         }
 
         std::vector<int> v(tot_num_measurements);
-
         std::vector<int>::iterator it;
 
         // Don't think we need to sort this...

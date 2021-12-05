@@ -96,7 +96,7 @@ namespace ml
       Association::shared_ptr a = std::make_shared<Association>(p->first, l);
       h.extend(a);
     }
-    
+    h.fill_with_unassociated_measurements(measurements_.size());
 
     return h;
   }
