@@ -10,6 +10,7 @@ namespace jcbb
 {
     Association::Association(int m) : measurement(m), landmark({}) {}
     Association::Association(int m, gtsam::Key l, const gtsam::Matrix &Hx, const gtsam::Matrix &Hl, const gtsam::Vector& error) : measurement(m), landmark(l), Hx(Hx), Hl(Hl), error(error) {}
+    Association::Association(int m, gtsam::Key l, const gtsam::Vector& error) : measurement(m), landmark(l), error(error) {}
 
     int Hypothesis::num_associations() const
     {

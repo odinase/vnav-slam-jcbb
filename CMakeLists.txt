@@ -40,12 +40,9 @@ catkin_package(
 
 include_directories(
   eigen3
-  jcbb/include
   include
   ${catkin_INCLUDE_DIRS}
 )
-
-# catkin_simple()
 
 add_library(jcbb
   src/jcbb/jcbb.cpp
@@ -60,12 +57,27 @@ target_link_libraries(jcbb
   gtsam
   )
 
+
+  add_library(ml
+  src/ml/MaximumLikelihood.cpp
+  src/jcbb/Hypothesis.cpp
+)
+
+target_link_libraries(ml
+  # ${catkin_LIBRARIES}
+  Eigen3::Eigen
+  gtsam
+  )
+
+
+
 add_library(slam
   src/slam/slam.cpp
 )
 
 target_link_libraries(slam
   jcbb
+  ml
   # ${catkin_LIBRARIES}
   Eigen3::Eigen
   gtsam

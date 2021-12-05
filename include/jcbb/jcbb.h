@@ -32,7 +32,7 @@ namespace jcbb
         JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob, double jc_prob);
         double joint_compatability(const Hypothesis &h) const;
         double individual_compatability(const Association &a) const;
-        Hypothesis jcbb() const;
+        Hypothesis associate() const;
 
     private:
         const gtsam::Values &estimates_;

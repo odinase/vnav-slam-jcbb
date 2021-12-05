@@ -188,7 +188,7 @@ namespace jcbb
     return innov.transpose() * S.llt().solve(innov);
   }
 
-  Hypothesis JCBB::jcbb() const
+  Hypothesis JCBB::associate() const
   {
     Hypothesis best_hypothesis{Hypothesis::empty_hypothesis()};
     FastMinHeap<Hypothesis> min_heap;

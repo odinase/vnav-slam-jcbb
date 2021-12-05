@@ -23,6 +23,7 @@ namespace jcbb
     {
         Association(int m);
         Association(int m, gtsam::Key l, const gtsam::Matrix& Hx, const gtsam::Matrix& Hl, const gtsam::Vector& error);
+        Association(int m, gtsam::Key l, const gtsam::Vector& error); // For ML
         typedef std::shared_ptr<Association> shared_ptr;
         int measurement;
         std::optional<gtsam::Key> landmark;
