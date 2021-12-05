@@ -51,6 +51,7 @@ namespace ml
     gtsam::SharedNoiseModel noise(meas_noise_);
     // First loop over all measurements, and find the lowest Mahalanobis distance
     gtsam::FastMap<gtsam::Key, gtsam::FastVector<std::pair<int, double>>> lmk_measurement_assos;
+    gtsam::Matrix Hx, Hl;
     for (int i = 0; i < measurements_.size(); i++)
     {
       const auto &meas = measurements_[i];
@@ -58,7 +59,6 @@ namespace ml
       double lowest_nis = std::numeric_limits<double>::infinity();
 
       std::pair<int, double> smallest_innovation(-1, 0.0);
-      gtsam::Matrix Hx, Hl;
       for (const auto &l : landmark_keys_)
       {
         gtsam::Pose3 lmk = estimates_.at<gtsam::Pose3>(l);
