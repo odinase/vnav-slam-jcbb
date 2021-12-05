@@ -108,6 +108,11 @@ namespace slam
       association_method = AssociationMethod::ML;
       break;
     }
+    case 2:
+    {
+      association_method = AssociationMethod::KnownDataAssociation;
+      break;
+    }
     default:
     {
       association_method = AssociationMethod::JCBB;

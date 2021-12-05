@@ -3,6 +3,7 @@
 #include "jcbb/Hypothesis.h"
 
 #include "ml/MaximumLikelihood.h"
+#include "gt/KnownDataAssociation.h"
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/BetweenFactor.h>
@@ -118,6 +119,16 @@ namespace slam
       h = ml_.associate();
       break;
     }
+    case AssociationMethod::KnownDataAssociation:
+      gt::KnownDataAssociation gt_(
+        estimates_, 
+        marginals, 
+        measurements,
+        meas_noise_,
+        measured_apriltags,
+        &apriltag_id_lmk_
+      );
+      h = gt_.associate();
     }
 
     const auto &assos = h.associations();

@@ -18,7 +18,8 @@ namespace slam
 
     enum class AssociationMethod {
         JCBB,
-        ML
+        ML,
+        KnownDataAssociation
     };
 
     class SLAM
@@ -43,6 +44,9 @@ namespace slam
 
         void addOdom(const gtsam::Pose3 &odom);
         gtsam::FastVector<gtsam::Pose3> predictLandmarks() const;
+
+        // For keeping track internally of associated landmarks and apriltags
+        std::unordered_map<int, gtsam::Key> apriltag_id_lmk_;
 
         int optimization_rate_;
         double ic_prob_;

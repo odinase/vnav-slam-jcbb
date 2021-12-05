@@ -70,6 +70,21 @@ target_link_libraries(ml
   gtsam
   )
 
+
+
+  add_library(gt
+  src/gt/KnownDataAssociation.cpp
+  src/jcbb/Hypothesis.cpp
+)
+
+target_link_libraries(gt
+  # ${catkin_LIBRARIES}
+  Eigen3::Eigen
+  gtsam
+  )
+
+
+
 add_library(slam
   src/slam/slam.cpp
 )
@@ -77,6 +92,7 @@ add_library(slam
 target_link_libraries(slam
   jcbb
   ml
+  gt
   # ${catkin_LIBRARIES}
   Eigen3::Eigen
   gtsam
