@@ -283,15 +283,22 @@ namespace slam
     }
   }
 
+  // Log data in TUM format: https://github.com/MichaelGrupp/evo/wiki/Formats#tum---tum-rgb-d-dataset-trajectory-format
   void SLAM_node::logData() const
   {
     std::string logging_path = ros::package::getPath("slam") + "/logs";
     std::fstream path_file(logging_path + "/path.txt", std::ios::out);
     gtsam::FastVector<gtsam::Pose3> trajectory = slam_.getTrajectory();
-    // We project the pose onto 2D since everything is basically flat.
     for (const auto &pose : trajectory)
     {
-      path_file << pose.translation()(0) << " " << pose.translation()(1) << " " << pose.rotation().yaw() << "\n";
+      path_file << pose.translation().x() << " " 
+                << pose.translation().y() << " " 
+                << pose.translation().z() << " "
+                << pose.rotation().toQuaternion().x() << " "
+                << pose.rotation().toQuaternion().y() << " "
+                << pose.rotation().toQuaternion().z() << " "
+                << pose.rotation().toQuaternion().w() << " "
+      << "\n";
     }
     path_file.close();
 
@@ -299,14 +306,29 @@ namespace slam
     gtsam::FastVector<gtsam::Pose3> landmark_poses = slam_.getLandmarkPoses();
     for (const auto &lmk : landmark_poses)
     {
-      landmarks_file << lmk.translation()(0) << " " << lmk.translation()(1) << "\n";
+      landmarks_file << lmk.translation().x() << " " 
+                     << lmk.translation().y() << " " 
+                     << lmk.translation().z() << " "
+                     << lmk.rotation().toQuaternion().x() << " "
+                     << lmk.rotation().toQuaternion().y() << " "
+                     << lmk.rotation().toQuaternion().z() << " "
+                     << lmk.rotation().toQuaternion().w() << " "
+      << "\n";
+
     }
     landmarks_file.close();
 
     std::fstream raw_odom_file(logging_path + "/odom.txt", std::ios::out);
     for (const auto &odom : raw_odoms_)
     {
-      raw_odom_file << odom.translation()(0) << " " << odom.translation()(1) << " " << odom.rotation().yaw() << "\n";
+      raw_odom_file << odom.translation().x() << " " 
+                    << odom.translation().y() << " " 
+                    << odom.translation().z() << " "
+                    << odom.rotation().toQuaternion().x() << " "
+                    << odom.rotation().toQuaternion().y() << " "
+                    << odom.rotation().toQuaternion().z() << " "
+                    << odom.rotation().toQuaternion().w() << " "
+      << "\n";
     }
     raw_odom_file.close();
 
