@@ -13,10 +13,11 @@
 namespace slam
 {
 
-    using gtsam::symbol_shorthand::X;
     using gtsam::symbol_shorthand::L;
+    using gtsam::symbol_shorthand::X;
 
-    enum class AssociationMethod {
+    enum class AssociationMethod
+    {
         JCBB,
         ML,
         KnownDataAssociation
@@ -63,12 +64,13 @@ namespace slam
         // We need to initialize the graph with priors on the first pose and landmark
         void optimize();
         const gtsam::Values &currentEstimates() const;
-        void processOdomMeasurementScan(const gtsam::Pose3& odom, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::FastVector<int>& measured_apriltags);
-        void initialize(double ic_prob, double jc_prob, int optimization_rate, const std::vector<double>& odom_noise, const std::vector<double>& meas_noise, const std::vector<double>& prior_noise, AssociationMethod association_method);
+        void processOdomMeasurementScan(const gtsam::Pose3 &odom, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::FastVector<int> &measured_apriltags);
+        void initialize(double ic_prob, double jc_prob, int optimization_rate, const std::vector<double> &odom_noise, const std::vector<double> &meas_noise, const std::vector<double> &prior_noise, AssociationMethod association_method);
         gtsam::FastVector<gtsam::Pose3> getTrajectory() const;
         gtsam::FastVector<gtsam::Pose3> getLandmarkPoses() const;
-        const gtsam::FastMap<int, gtsam::FastVector<gtsam::Key>>& getApriltagLandmarkAssos() const { return apriltag_lmk_assos_; }  
-        const gtsam::FastVector<jcbb::Hypothesis>& getChosenHypotheses() const { return hypotheses_; }
+        const gtsam::FastMap<int, gtsam::FastVector<gtsam::Key>> &getApriltagLandmarkAssos() const { return apriltag_lmk_assos_; }
+        const gtsam::FastVector<jcbb::Hypothesis> &getChosenHypotheses() const { return hypotheses_; }
+        AssociationMethod getAssociationMethod() const { return association_method_; }
     };
 
 } // namespace slam

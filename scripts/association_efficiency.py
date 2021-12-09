@@ -1,10 +1,15 @@
 import numpy as np
 from scipy.stats import chi2
 import matplotlib.pyplot as plt
+import sys
 
 def association_statistics():
+    assert len(sys.argv) == 2 and sys.argv[1] in ["jcbb", "ml", "gt"], f"Must have extra argument for what method to check, use 'jcbb', 'ml' or 'gt', arguments are now {sys.argv}"
+
+    method = sys.argv[1]
+
     assos = dict()
-    with open('./logs/april_lmk_assos.txt') as f:
+    with open('./logs/'+method+'/april_lmk_assos.txt') as f:
         for line in f:
             s = line.split(' ')[:-1] # Last element is always unwanted whitespace
             apriltag_id = int(s[0])
@@ -26,7 +31,7 @@ def association_statistics():
     print(f"{failed_assos/num_apriltags*100.0:.2f}% of the apriltags")
     print(f"Number of landmarks: {num_landmarks}")
 
-    nis_consistency = np.loadtxt('./logs/nis_consistency.txt')
+    nis_consistency = np.loadtxt('./logs/'+method+'/nis_consistency.txt')
     nis, dof = nis_consistency.T
     alpha = 0.05 # Hypothesis level
 

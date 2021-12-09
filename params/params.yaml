@@ -1,13 +1,21 @@
-ic_prob: 0.9597426875179622 #0.17357807091003608
-jc_prob: 0.9597426875179622
+ic_prob: 0.9 #0.9597426875179622  #0.5
+jc_prob: 0.99 #0.9597426875179622
 optimization_rate: 25
 # X, Y, Z, roll, pitch, yaw (in degrees)
-odom_noise: [1.0e-2, 1.0e-2, 1.0e-2, 5.0, 5.0, 5.0]
+odom_noise: [1.0e-3, 1.0e-3, 1.0e-3, 1.0, 1.0, 1.0]
 # X, Y, Z, roll, pitch, yaw (in degrees)
-meas_noise: [1.0e-1, 1.0e-1, 1.0e-1, 5.0, 5.0, 5.0]
+meas_noise: [1.0e-3, 1.0e-3, 1.0e-3, 1.0, 1.0, 1.0]
 prior_noise: [1.0e-3, 1.0e-3, 1.0e-3, 1.0, 1.0, 1.0]
-should_log: true
+should_log: false
 number_of_messages_to_process: 5700 # Based on the number of messages in bag. 0 is infinite.
 
 # 0 = JCBB, 1 = ML, 2 = Known data association
-association_method: 2
+association_method: 0
+
+## JCBB params 5/12/21 20:26
+# ic_prob: 0.5
+# jc_prob: 0.9597426875179622
+
+## ML params 5/12/21 20:41
+# ic_prob: 0.9597426875179622 #0.5 #17357807091003608
+# jc_prob: 0.9597426875179622

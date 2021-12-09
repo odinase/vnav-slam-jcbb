@@ -154,7 +154,6 @@ namespace ml
 
     double nis = joint_compatability(h);
     h.set_nis(nis);
-    std::cout << "computed nis " << nis << "\n";
 
     return h;
   }

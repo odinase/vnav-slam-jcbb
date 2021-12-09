@@ -63,11 +63,20 @@ namespace slam
     switch (association_method)
     {
     case AssociationMethod::JCBB:
+    {
       std::cout << "JCBB\n";
       break;
+    }
     case AssociationMethod::ML:
+    {
       std::cout << "ML\n";
       break;
+    }
+    case AssociationMethod::KnownDataAssociation:
+    {
+      std::cout << "Known data association\n";
+      break;
+    }
     }
   }
 

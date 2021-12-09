@@ -286,49 +286,77 @@ namespace slam
   // Log data in TUM format: https://github.com/MichaelGrupp/evo/wiki/Formats#tum---tum-rgb-d-dataset-trajectory-format
   void SLAM_node::logData() const
   {
-    std::string logging_path = ros::package::getPath("slam") + "/logs";
+    std::string asso_method_folder;
+    switch (slam_.getAssociationMethod())
+    {
+    case AssociationMethod::JCBB:
+    {
+      asso_method_folder = "/jcbb";
+      break;
+    }
+    case AssociationMethod::ML:
+    {
+      asso_method_folder = "/ml";
+      break;
+    }
+    case AssociationMethod::KnownDataAssociation:
+    {
+      asso_method_folder = "/gt";
+      break;
+    }
+    }
+
+    std::string logging_path = ros::package::getPath("slam") + "/logs" + asso_method_folder;
     std::fstream path_file(logging_path + "/path.txt", std::ios::out);
     gtsam::FastVector<gtsam::Pose3> trajectory = slam_.getTrajectory();
+    int i = 0;
     for (const auto &pose : trajectory)
     {
-      path_file << pose.translation().x() << " " 
-                << pose.translation().y() << " " 
+      path_file << i << " "
+                << pose.translation().x() << " "
+                << pose.translation().y() << " "
                 << pose.translation().z() << " "
                 << pose.rotation().toQuaternion().x() << " "
                 << pose.rotation().toQuaternion().y() << " "
                 << pose.rotation().toQuaternion().z() << " "
-                << pose.rotation().toQuaternion().w() << " "
-      << "\n";
+                << pose.rotation().toQuaternion().w()
+                << "\n";
+      i++;
     }
     path_file.close();
 
     std::fstream landmarks_file(logging_path + "/landmarks.txt", std::ios::out);
     gtsam::FastVector<gtsam::Pose3> landmark_poses = slam_.getLandmarkPoses();
+    i = 0;
     for (const auto &lmk : landmark_poses)
     {
-      landmarks_file << lmk.translation().x() << " " 
-                     << lmk.translation().y() << " " 
+      landmarks_file << i << " "
+                     << lmk.translation().x() << " "
+                     << lmk.translation().y() << " "
                      << lmk.translation().z() << " "
                      << lmk.rotation().toQuaternion().x() << " "
                      << lmk.rotation().toQuaternion().y() << " "
                      << lmk.rotation().toQuaternion().z() << " "
-                     << lmk.rotation().toQuaternion().w() << " "
-      << "\n";
-
+                     << lmk.rotation().toQuaternion().w()
+                     << "\n";
+      i++;
     }
     landmarks_file.close();
 
     std::fstream raw_odom_file(logging_path + "/odom.txt", std::ios::out);
+    i = 0;
     for (const auto &odom : raw_odoms_)
     {
-      raw_odom_file << odom.translation().x() << " " 
-                    << odom.translation().y() << " " 
+      raw_odom_file << i << " "
+                    << odom.translation().x() << " "
+                    << odom.translation().y() << " "
                     << odom.translation().z() << " "
                     << odom.rotation().toQuaternion().x() << " "
                     << odom.rotation().toQuaternion().y() << " "
                     << odom.rotation().toQuaternion().z() << " "
-                    << odom.rotation().toQuaternion().w() << " "
-      << "\n";
+                    << odom.rotation().toQuaternion().w()
+                    << "\n";
+      i++;
     }
     raw_odom_file.close();
 
