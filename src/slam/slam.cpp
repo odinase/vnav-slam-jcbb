@@ -33,15 +33,15 @@ namespace slam
     {
       if (i < 3)
       {
-        odom_sigmas(i) = odom_noise[i];
-        meas_sigmas(i) = meas_noise[i];
-        prior_sigmas(i) = prior_noise[i];
-      }
-      else
-      {
         odom_sigmas(i) = odom_noise[i] * M_PI / 180.0;
         meas_sigmas(i) = meas_noise[i] * M_PI / 180.0;
         prior_sigmas(i) = prior_noise[i] * M_PI / 180.0;
+      }
+      else
+      {
+        odom_sigmas(i) = odom_noise[i];
+        meas_sigmas(i) = meas_noise[i];
+        prior_sigmas(i) = prior_noise[i];
       }
     }
     std::cout << "Using ic_prob " << ic_prob << ", jc_prob " << jc_prob << ", optimization_rate " << optimization_rate << "\n";
@@ -151,6 +151,12 @@ namespace slam
       if (a->associated())
       {
         std::cout << "associated meas " << a->measurement << " with landmark " << gtsam::symbolIndex(*a->landmark) << "\n";
+        if ((apriltag_id_lmk_.find(apriltag_id) != apriltag_id_lmk_.end()) && (apriltag_id_lmk_[apriltag_id] != *a->landmark)) {
+          std::cout << "Associated apriltag " << apriltag_id
+          << " that was previously associated with landmark " << gtsam::symbolIndex(apriltag_id_lmk_[apriltag_id])
+          << " with different landmark " << gtsam::symbolIndex(*a->landmark)
+          << "!!!\n";
+        }
         graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(latest_pose_key_), *a->landmark, meas, meas_noise_));
       }
       else
@@ -159,6 +165,13 @@ namespace slam
         estimates_.insert(L(latest_landmark_key_), meas_world);
         std::cout << "Added " << gtsam::symbolChr(L(latest_landmark_key_)) << gtsam::symbolIndex(L(latest_landmark_key_)) << "\n";
         apriltag_lmk_assos_[apriltag_id].push_back(L(latest_landmark_key_));
+        // Only do this if we are checking how well we correctly associate landmarks
+        if (association_method_ != AssociationMethod::KnownDataAssociation) {
+          // New apriltag, correctly detected that this haven't been seen before
+          if (apriltag_id_lmk_.find(apriltag_id) == apriltag_id_lmk_.end())
+            std::cout << "Associated new landmark " << gtsam::symbolIndex(L(latest_landmark_key_)) << " with apriltag " << apriltag_id << "\n";
+          apriltag_id_lmk_.insert({apriltag_id, L(latest_landmark_key_)});
+        }
         incrementLatestLandmarkKey();
       }
       // We just inserted our first landmark, set prior
