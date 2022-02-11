@@ -23,13 +23,20 @@ find_package(catkin REQUIRED COMPONENTS
 #   # eigen_catkin
 # )
 
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(GTSAM REQUIRED) # Uses installed package
+# include_directories(${GTSAM_INCLUDE_DIR})
+
+find_package(Eigen3 REQUIRED)
+set(EIGEN3_INCLUDE_DIR "/usr/local/include/gtsam/3rdparty/Eigen")
+include_directories(${EIGEN3_INCLUDE_DIR})
+# find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+# set(EIGEN3_INCLUDE_DIR "/usr/local/include/gtsam/3rdparty/Eigen")
+# include_directories(${EIGEN3_INCLUDE_DIR})
+
 # find_package(Boost REQUIRED)
 
 find_package (glog 0.6.0 REQUIRED)
 
-find_package(GTSAM REQUIRED) # Uses installed package
-include_directories(${GTSAM_INCLUDE_DIR})
 
 catkin_package(
  INCLUDE_DIRS include
@@ -55,12 +62,12 @@ target_link_libraries(jcbb
   # ${catkin_LIBRARIES}
   Eigen3::Eigen
   gtsam
-  )
+)
 
 
-  add_library(ml
+add_library(ml
   src/ml/MaximumLikelihood.cpp
-  src/jcbb/jcbb.cpp
+  # src/jcbb/jcbb.cpp
   src/jcbb/Hypothesis.cpp
 )
 
@@ -69,7 +76,6 @@ target_link_libraries(ml
   Eigen3::Eigen
   gtsam
   )
-
 
 
   add_library(gt
@@ -83,29 +89,40 @@ target_link_libraries(gt
   gtsam
   )
 
-
-
 add_library(slam
   src/slam/slam.cpp
 )
 
 target_link_libraries(slam
   jcbb
-  ml
   gt
+  ml
   # ${catkin_LIBRARIES}
   Eigen3::Eigen
   gtsam
 )
 
-add_executable(slam_node
-  src/slam/slam_node
+# add_executable(slam_node
+#   src/slam/slam_node
+# )
+
+# target_link_libraries(slam_node
+#   ${catkin_LIBRARIES}
+#   slam
+#   gtsam
+#   Eigen3::Eigen
+#   glog::glog
+# )
+
+
+add_executable(slam_g2o_file
+  src/slam/slam_g2o_file.cpp
 )
 
-target_link_libraries(slam_node
+target_link_libraries(slam_g2o_file
   ${catkin_LIBRARIES}
+  Eigen3::Eigen
   slam
   gtsam
-  Eigen3::Eigen
   glog::glog
 )
