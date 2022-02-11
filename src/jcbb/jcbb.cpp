@@ -69,7 +69,7 @@ namespace jcbb
     return nis < chi2inv(1 - jc_prob_, N * d);
   }
 
-  void JCBB::push_successors_on_heap(FastMinHeap<Hypothesis> *min_heap, const Hypothesis &h) const
+  void JCBB::push_successors_on_heap(FastMinHeap<Hypothesis> *min_heap, const Hypothesis &h, const gtsam::FastVector<int>& measurement_order) const
   {
     // Should probably keep this in...
     // if (min_heap == nullptr) {
@@ -82,6 +82,9 @@ namespace jcbb
     { // We have no more measurements to check, so no successors
       return;
     }
+
+    // Map to sorted measurements
+    next_measurement = measurement_order[next_measurement];
 
     int d  = Measurement::dimension;
 
@@ -188,11 +191,61 @@ namespace jcbb
     return innov.transpose() * S.llt().solve(innov);
   }
 
+  gtsam::FastVector<int> JCBB::compute_measurement_order() const {
+    gtsam::SharedNoiseModel noise(meas_noise_);
+
+    gtsam::Matrix Hx, Hl;
+    gtsam::FastVector<std::pair<int, double>> measurement_nis;
+    for (int i = 0; i < measurements_.size(); i++)
+    {
+      std::pair<int, double> meas_nis = {i, std::numeric_limits<double>::infinity()};
+      const auto &meas = measurements_[i];
+      
+      // Find lowest nis
+      for (const auto &l : landmark_keys_)
+      {
+        gtsam::Pose3 lmk = estimates_.at<gtsam::Pose3>(l);
+        gtsam::BetweenFactor<gtsam::Pose3> factor(x_key_, l, meas, noise);
+        gtsam::Vector error = factor.evaluateError(x_pose_, lmk, Hx, Hl);
+        Association a(i, l, Hx, Hl, error);
+        double nis = individual_compatability(a);
+
+        // TODO: Refactor out things not JCBB from jcbb
+        double inv = jcbb::chi2inv(1 - ic_prob_, gtsam::Pose3::dimension);
+        // Individually compatible?
+        if (nis < inv)
+        {
+          // Better association than already found?
+          if (nis < meas_nis.second)
+          {
+            meas_nis.second = nis;
+          }
+        }
+      }
+
+      measurement_nis.push_back(meas_nis);
+    }
+
+    std::sort(measurement_nis.begin(), measurement_nis.end(), [](const auto& lhs, const auto& rhs) {return lhs.second < rhs.second;});
+
+    std::cout << "Using measurement order:";
+    gtsam::FastVector<int> measurement_order;
+    for (const auto& p : measurement_nis) {
+      std::cout << " " << p.first; 
+      measurement_order.push_back(p.first);
+    }
+    std::cout << std::endl;
+
+    return measurement_order;
+  }
+
   Hypothesis JCBB::associate() const
   {
     Hypothesis best_hypothesis{Hypothesis::empty_hypothesis()};
     FastMinHeap<Hypothesis> min_heap;
     min_heap.push(Hypothesis::empty_hypothesis());
+
+    gtsam::FastVector<int> measurement_order = compute_measurement_order();
 
     while (!min_heap.empty())
     {
@@ -205,7 +258,7 @@ namespace jcbb
         {
           best_hypothesis = hypothesis;
         }
-        push_successors_on_heap(&min_heap, hypothesis);
+        push_successors_on_heap(&min_heap, hypothesis, measurement_order);
       }
     }
     

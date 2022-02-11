@@ -45,7 +45,9 @@ namespace jcbb
         double ic_prob_;
         double jc_prob_;
 
-        void push_successors_on_heap(FastMinHeap<Hypothesis>* min_heap, const Hypothesis &h) const;
+        gtsam::FastVector<int> compute_measurement_order() const;
+
+        void push_successors_on_heap(FastMinHeap<Hypothesis>* min_heap, const Hypothesis &h, const gtsam::FastVector<int>& measurement_order) const;
         bool feasible(const Hypothesis &h) const;
         bool prunable(const Hypothesis &h, const Hypothesis &best) const;
         // std::unordered_map<>

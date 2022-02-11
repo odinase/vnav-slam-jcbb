@@ -1,4 +1,4 @@
-ic_prob: 0.5
+ic_prob: 0.9597426875179622 #0.5
 jc_prob: 0.9597426875179622
 optimization_rate: 25
 # roll, pitch, yaw, X, Y, Z (in degrees)

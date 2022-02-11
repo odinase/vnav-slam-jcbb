@@ -111,6 +111,10 @@ namespace slam
     }
     num = 1;
 
+    if (measurements.size() == 0) {
+      return;
+    }
+
     gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
 
     jcbb::Hypothesis h = jcbb::Hypothesis::empty_hypothesis();
