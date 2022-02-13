@@ -36,7 +36,7 @@ struct Timestep
 {
     int step;
     POSE odom;
-    vector<POINT> measurements;
+    FastVector<POINT> measurements;
 };
 
 using Timestep2D = Timestep<Pose2, Point2>;
