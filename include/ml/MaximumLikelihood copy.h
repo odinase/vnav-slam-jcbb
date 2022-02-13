@@ -21,21 +21,20 @@ namespace ml {
 using jcbb::Hypothesis;
 using jcbb::Association;
 
-template<class POSE, class POINT>
 class MaximumLikelihood {
 
 private:
         const gtsam::Values &estimates_;
         const gtsam::Marginals &marginals_;
-        const gtsam::FastVector<POINT> &measurements_;
+        const gtsam::FastVector<gtsam::Pose3> &measurements_;
         const gtsam::noiseModel::Diagonal::shared_ptr meas_noise_;
-        POSE x_pose_;
+        gtsam::Pose3 x_pose_;
         gtsam::Key x_key_;
         gtsam::KeyList landmark_keys_;
         double ic_prob_;
 
 public:
-        MaximumLikelihood(const gtsam::Values &estimates, const gtsam::Marginals &marginals_, const gtsam::FastVector<POINT> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob);
+        MaximumLikelihood(const gtsam::Values &estimates, const gtsam::Marginals &marginals_, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob);
         double joint_compatability(const Hypothesis &h) const;
         double individual_compatability(const Association &a) const;
         Hypothesis associate() const;
@@ -43,6 +42,5 @@ public:
 
 } // namespace ml
 
-#include "ml/MaximumLikelihood.hxx"
 
 #endif // MAXIMUM_LIKELIHOOD_H
