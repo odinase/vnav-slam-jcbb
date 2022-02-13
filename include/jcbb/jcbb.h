@@ -18,18 +18,14 @@
 
 
 namespace jcbb
-{
-    using State = gtsam::Pose3;
-    using Landmark = gtsam::Pose3;
-    using Measurement = gtsam::Pose3;
-    template <class T>
+{    template <class T>
     using FastMinHeap = std::priority_queue<T, gtsam::FastVector<T>, std::greater<T>>;
     double chi2inv(double p, unsigned int dim);
 
     class JCBB
     {
     public:
-        JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob, double jc_prob);
+        JCBB(const gtsam::Values &estimates, const Marginals &marginals_, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob, double jc_prob);
         double joint_compatability(const Hypothesis &h) const;
         double individual_compatability(const Association &a) const;
         Hypothesis associate() const;
@@ -37,9 +33,9 @@ namespace jcbb
     private:
         const gtsam::Values &estimates_;
         const Marginals &marginals_;
-        const gtsam::FastVector<Measurement> &measurements_;
+        const gtsam::FastVector<gtsam::Pose3> &measurements_;
         const gtsam::noiseModel::Diagonal::shared_ptr meas_noise_;
-        State x_pose_;
+        gtsam::Pose3 x_pose_;
         gtsam::Key x_key_;
         gtsam::KeyList landmark_keys_;
         double ic_prob_;

@@ -65,42 +65,42 @@ target_link_libraries(jcbb
 )
 
 
-add_library(ml
-  src/ml/MaximumLikelihood.cpp
-  # src/jcbb/jcbb.cpp
-  src/jcbb/Hypothesis.cpp
-)
+# add_library(ml
+#   src/ml/MaximumLikelihood.cpp
+#   # src/jcbb/jcbb.cpp
+#   src/jcbb/Hypothesis.cpp
+# )
 
-target_link_libraries(ml
-  # ${catkin_LIBRARIES}
-  Eigen3::Eigen
-  gtsam
-  )
+# target_link_libraries(ml
+#   # ${catkin_LIBRARIES}
+#   Eigen3::Eigen
+#   gtsam
+#   )
 
 
-  add_library(gt
-  src/gt/KnownDataAssociation.cpp
-  src/jcbb/Hypothesis.cpp
-)
+#   add_library(gt
+#   src/gt/KnownDataAssociation.cpp
+#   src/jcbb/Hypothesis.cpp
+# )
 
-target_link_libraries(gt
-  # ${catkin_LIBRARIES}
-  Eigen3::Eigen
-  gtsam
-  )
+# target_link_libraries(gt
+#   # ${catkin_LIBRARIES}
+#   Eigen3::Eigen
+#   gtsam
+#   )
 
-add_library(slam
-  src/slam/slam.cpp
-)
+# add_library(slam
+#   src/slam/slam.cpp
+# )
 
-target_link_libraries(slam
-  jcbb
-  gt
-  ml
-  # ${catkin_LIBRARIES}
-  Eigen3::Eigen
-  gtsam
-)
+# target_link_libraries(slam
+#   jcbb
+#   gt
+#   ml
+#   # ${catkin_LIBRARIES}
+#   Eigen3::Eigen
+#   gtsam
+# )
 
 # add_executable(slam_node
 #   src/slam/slam_node
@@ -122,7 +122,7 @@ add_executable(slam_g2o_file
 target_link_libraries(slam_g2o_file
   ${catkin_LIBRARIES}
   Eigen3::Eigen
-  slam
+  # slam
   gtsam
   glog::glog
 )

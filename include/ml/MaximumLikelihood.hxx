@@ -7,6 +7,7 @@
 #include <utility>
 #include <algorithm>
 #include <memory>
+#include <slam/types.h>
 
 namespace ml
 {
@@ -14,11 +15,10 @@ namespace ml
   using gtsam::symbol_shorthand::X;
 
   template<class POSE, class POINT>
-  MaximumLikelihood<POSE, POINT>::MaximumLikelihood(const gtsam::Values &estimates, const gtsam::Marginals &marginals, const gtsam::FastVector<POINT> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob)
+  MaximumLikelihood<POSE, POINT>::MaximumLikelihood(const gtsam::Values &estimates, const gtsam::Marginals &marginals, const gtsam::FastVector<slam::Measurement<POINT>> &measurements, double ic_prob)
       : estimates_(estimates),
         marginals_(marginals),
         measurements_(measurements),
-        meas_noise_(meas_noise),
         ic_prob_(ic_prob)
   {
     landmark_keys_ = estimates_.filter(gtsam::Symbol::ChrTest('l')).keys();
@@ -65,7 +65,8 @@ namespace ml
         H.block(k, n + j, d, m) = a->Hl;
 
         // Adding R might be done more cleverly
-        R.block(k, k, d, d) = meas_noise_->sigmas().array().square().matrix().asDiagonal();
+        const auto& meas_noise = measurements_[a->measurement].noise;
+        R.block(k, k, d, d) = meas_noise->sigmas().array().square().matrix().asDiagonal();
 
         k += d;
         j += m;
@@ -93,7 +94,9 @@ namespace ml
     int cols = a.Hx.cols() + a.Hl.cols();
     Eigen::MatrixXd H(rows, cols);
     H << a.Hx, a.Hl;
-    Eigen::MatrixXd R = meas_noise_->sigmas().array().square().matrix().asDiagonal();
+
+    const auto& meas_noise = measurements_[a.measurement].noise;
+    Eigen::MatrixXd R = meas_noise->sigmas().array().square().matrix().asDiagonal();
     Eigen::MatrixXd S = H * P * H.transpose() + R;
 
     return innov.transpose() * S.llt().solve(innov);
@@ -102,13 +105,13 @@ namespace ml
   template<class POSE, class POINT>
   Hypothesis MaximumLikelihood<POSE, POINT>::associate() const
   {
-    gtsam::SharedNoiseModel noise(meas_noise_);
     // First loop over all measurements, and find the lowest Mahalanobis distance
     gtsam::FastMap<gtsam::Key, gtsam::FastVector<std::pair<int, double>>> lmk_measurement_assos;
     gtsam::Matrix Hx, Hl;
     for (int i = 0; i < measurements_.size(); i++)
     {
-      const auto &meas = measurements_[i];
+      const auto &meas = measurements_[i].measurement;
+      const auto& noise = measurements_[i].noise;
 
       double lowest_nis = std::numeric_limits<double>::infinity();
 
@@ -149,7 +152,8 @@ namespace ml
                                 { return p1.second < p2.second; });
       // Pretty redundant to do full recomputation here, but oh well
       POINT lmk = estimates_.at<POINT>(l);
-      const auto &meas = measurements_[p->first];
+      const auto &meas = measurements_[p->first].measurement;
+      const auto &noise = measurements_[p->first].noise;
       gtsam::PoseToPointFactor<POSE, POINT> factor(x_key_, l, meas, noise);
       gtsam::Vector error = factor.evaluateError(x_pose_, lmk, Hx, Hl);
       Association::shared_ptr a = std::make_shared<Association>(p->first, l, Hx, Hl, error);

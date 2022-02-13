@@ -5,6 +5,19 @@
 
 namespace slam {
 
+template <class POSE>
+struct Odometry {
+    POSE odom;
+    gtsam::SharedNoiseModel noise;
+};
+
+template <class POINT>
+struct Measurement {
+    POINT measurement;
+    gtsam::SharedNoiseModel noise;
+};
+
+
 struct Landmark {
     unsigned long int id_gt;
     gtsam::Key key;

@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <iostream>
+#include "slam/types.h"
 
 #include <gtsam/base/FastVector.h>
 #include <gtsam/geometry/Pose3.h>
@@ -27,15 +28,14 @@ class MaximumLikelihood {
 private:
         const gtsam::Values &estimates_;
         const gtsam::Marginals &marginals_;
-        const gtsam::FastVector<POINT> &measurements_;
-        const gtsam::noiseModel::Diagonal::shared_ptr meas_noise_;
+        const gtsam::FastVector<slam::Measurement<POINT>> &measurements_;
         POSE x_pose_;
         gtsam::Key x_key_;
         gtsam::KeyList landmark_keys_;
         double ic_prob_;
 
 public:
-        MaximumLikelihood(const gtsam::Values &estimates, const gtsam::Marginals &marginals_, const gtsam::FastVector<POINT> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob);
+        MaximumLikelihood(const gtsam::Values &estimates, const gtsam::Marginals &marginals_, const gtsam::FastVector<slam::Measurement<POINT>> &measurements, double ic_prob);
         double joint_compatability(const Hypothesis &h) const;
         double individual_compatability(const Association &a) const;
         Hypothesis associate() const;

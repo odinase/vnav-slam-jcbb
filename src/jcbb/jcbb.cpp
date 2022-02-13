@@ -30,7 +30,7 @@ namespace jcbb
     return std::find(s.begin(), s.end(), k) != s.end();
   }
 
-  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<Measurement> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob, double jc_prob)
+  JCBB::JCBB(const gtsam::Values &estimates, const Marginals &marginals, const gtsam::FastVector<gtsam::Pose3> &measurements, const gtsam::noiseModel::Diagonal::shared_ptr &meas_noise, double ic_prob, double jc_prob)
       : estimates_(estimates),
         marginals_(marginals),
         measurements_(measurements),
@@ -42,7 +42,7 @@ namespace jcbb
     auto poses = estimates_.filter(gtsam::Symbol::ChrTest('x'));
     int last_pose = poses.size() - 1; // Assuming first pose is 0
     x_key_ = X(last_pose);
-    x_pose_ = estimates.at<State>(x_key_);
+    x_pose_ = estimates.at<gtsam::Pose3>(x_key_);
   }
 
   bool JCBB::prunable(const Hypothesis &h, const Hypothesis &best) const
@@ -60,7 +60,7 @@ namespace jcbb
   bool JCBB::feasible(const Hypothesis &h) const
   {
     int N = h.num_associations();
-    int d = Measurement::dimension;
+    int d = gtsam::Pose3::dimension;
     if (N == 0)
     {
       return true;
@@ -83,14 +83,14 @@ namespace jcbb
       return;
     }
 
-    int d  = Measurement::dimension;
+    int d  = gtsam::Pose3::dimension;
 
     // Add unassociated hypothesis
     Hypothesis successor = h.extended(std::make_shared<Association>(next_measurement));
     min_heap->push(successor);
 
     gtsam::KeyVector associated_landmarks = h.associated_landmarks();
-    Measurement meas = measurements_[next_measurement];
+    gtsam::Pose3 meas = measurements_[next_measurement];
     gtsam::Matrix Hx, Hl;
 
     gtsam::SharedNoiseModel noise(meas_noise_);
@@ -101,7 +101,7 @@ namespace jcbb
       {
         continue;
       }
-      Landmark lmk = estimates_.at<Landmark>(l);
+      gtsam::Pose3 lmk = estimates_.at<gtsam::Pose3>(l);
 
       gtsam::BetweenFactor<gtsam::Pose3> factor(x_key_, l, meas, noise);
       gtsam::Vector error = factor.evaluateError(x_pose_, lmk, Hx, Hl);
@@ -122,9 +122,9 @@ namespace jcbb
   double JCBB::joint_compatability(const Hypothesis &h) const
   {
     int N = h.num_associations();
-    int n = State::dimension;
-    int m = Landmark::dimension;
-    int d = Measurement::dimension;
+    int n = gtsam::Pose3::dimension;
+    int m = gtsam::Pose3::dimension;
+    int d = gtsam::Pose3::dimension;
 
     gtsam::KeyVector joint_states;
     joint_states.push_back(x_key_);

@@ -12,6 +12,8 @@
 #include <fstream>
 #include <tuple>
 #include <algorithm>
+#include "slam/slam.h"
+#include "slam/types.h"
 
 using gtsam::symbol_shorthand::L; // gtsam/slam/dataset.cpp
 using namespace std;
@@ -21,22 +23,12 @@ using namespace gtsam;
 //     boost::tie()
 // }
 
-template <class POSE>
-using Odometry = BetweenFactor<POSE>;
-
-using Odometry3D = Odometry<Pose3>;
-
-template <class POSE, class POINT>
-using Measurement = PoseToPointFactor<POSE, POINT>;
-
-using Measurement3D = Measurement<Pose3, Point3>;
-
 template <class POSE, class POINT>
 struct Timestep
 {
     int step;
-    POSE odom;
-    FastVector<POINT> measurements;
+    slam::Odometry<POSE> odom;
+    FastVector<slam::Measurement<POINT>> measurements;
 };
 
 using Timestep2D = Timestep<Pose2, Point2>;
@@ -76,14 +68,18 @@ std::vector<Timestep<POSE, POINT>> convert_into_timesteps(
         timestep.step = t;
         // Initialize first odom as identity, as we haven't moved yet
         if (t > 0) {
-            timestep.odom = odomFactors[t-1]->measured();
+            timestep.odom.odom = odomFactors[t-1]->measured();
+            timestep.odom.noise = odomFactors[t-1]->noiseModel();
         } else {
-            timestep.odom = POSE();
+            timestep.odom.odom = POSE();
         }
 
         // Extract measurements from current pose
         while (curr_measurement < tot_num_measurements && symbolIndex(measFactors[curr_measurement]->key1()) == t) {
-            timestep.measurements.push_back(measFactors[curr_measurement]->measured());
+            slam::Measurement<POINT> meas;
+            meas.measurement = measFactors[curr_measurement]->measured();
+            meas.noise = measFactors[curr_measurement]->noiseModel();
+            timestep.measurements.push_back(meas);
             curr_measurement++;
         }
         
@@ -123,25 +119,25 @@ int main(const int argc, const char *argv[])
     auto [odomFactorIdx, measFactorIdx] = findFactors(odomFactors2d, odomFactors3d, measFactors2d, measFactors3d, graph);
     if (is3D)
     {
-        vector<Timestep<Pose3, Point3>> timesteps = convert_into_timesteps(odomFactors3d, measFactors3d);
+        vector<Timestep3D> timesteps = convert_into_timesteps(odomFactors3d, measFactors3d);
         for (const auto& timestep : timesteps) {
             cout << "\n****************************\n";
             cout << "in timestep " << timestep.step <<":\n";
-            cout << "odom:\n" << timestep.odom << "\n";
+            cout << "odom:\n" << timestep.odom.odom << "\n";
             cout << "measurements:\n";
             for (const auto measurement : timestep.measurements) {
-                cout << measurement << "\n\n";
+                cout << measurement.measurement << "\n\n";
             }
         }
     } else {
-        vector<Timestep<Pose2, Point2>> timesteps = convert_into_timesteps(odomFactors2d, measFactors2d);
+        vector<Timestep2D> timesteps = convert_into_timesteps(odomFactors2d, measFactors2d);
         for (const auto& timestep : timesteps) {
             cout << "\n****************************\n";
             cout << "in timestep " << timestep.step <<":\n";
-            cout << "odom:\n" << timestep.odom << "\n";
+            cout << "odom:\n" << timestep.odom.odom << "\n";
             cout << "measurements:\n";
             for (const auto measurement : timestep.measurements) {
-                cout << measurement << "\n\n";
+                cout << measurement.measurement << "\n\n";
             }
         }
     }
