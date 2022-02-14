@@ -6,12 +6,15 @@
 #include <gtsam/slam/dataset.h>
 #include <gtsam_unstable/slam/PoseToPointFactor.h>
 // #include "slam/utils.h"
-#include "slam/slam_g2o_file.h"
-#include "slam/utils_g2o.h"
 #include <cmath>
 #include <fstream>
 #include <tuple>
 #include <algorithm>
+
+#include <glog/logging.h>
+
+#include "slam/slam_g2o_file.h"
+#include "slam/utils_g2o.h"
 #include "slam/slam.h"
 #include "slam/types.h"
 
@@ -34,28 +37,26 @@ struct Timestep
 using Timestep2D = Timestep<Pose2, Point2>;
 using Timestep3D = Timestep<Pose3, Point3>;
 
-
 template <class POSE, class POINT>
 std::vector<Timestep<POSE, POINT>> convert_into_timesteps(
     vector<boost::shared_ptr<BetweenFactor<POSE>>> &odomFactors,
-    vector<boost::shared_ptr<PoseToPointFactor<POSE, POINT>>> &measFactors
-)
+    vector<boost::shared_ptr<PoseToPointFactor<POSE, POINT>>> &measFactors)
 {
     // Sort factors based on robot pose key, so that we can simply check when in time they should appear
     std::sort(
         odomFactors.begin(),
-        odomFactors.end(), 
-        [](const auto& lhs, const auto& rhs) {
-            return symbolIndex(lhs->key1()) < symbolIndex(rhs->key1()); 
-        }
-    );
+        odomFactors.end(),
+        [](const auto &lhs, const auto &rhs)
+        {
+            return symbolIndex(lhs->key1()) < symbolIndex(rhs->key1());
+        });
     std::sort(
         measFactors.begin(),
-        measFactors.end(), 
-        [](const auto& lhs, const auto& rhs) {
-            return symbolIndex(lhs->key1()) < symbolIndex(rhs->key1()); 
-        }
-    );
+        measFactors.end(),
+        [](const auto &lhs, const auto &rhs)
+        {
+            return symbolIndex(lhs->key1()) < symbolIndex(rhs->key1());
+        });
 
     size_t odoms = odomFactors.size();
     uint64_t num_timesteps = odoms + 1; // There will always be one more robot pose than odometry factors since they're all between
@@ -63,34 +64,42 @@ std::vector<Timestep<POSE, POINT>> convert_into_timesteps(
     size_t curr_measurement = 0;
     size_t tot_num_measurements = measFactors.size();
     timesteps.reserve(num_timesteps);
-    for (uint64_t t = 0; t < num_timesteps; t++) {
+    for (uint64_t t = 0; t < num_timesteps; t++)
+    {
         Timestep<POSE, POINT> timestep;
         timestep.step = t;
         // Initialize first odom as identity, as we haven't moved yet
-        if (t > 0) {
-            timestep.odom.odom = odomFactors[t-1]->measured();
-            timestep.odom.noise = odomFactors[t-1]->noiseModel();
-        } else {
+        if (t > 0)
+        {
+            timestep.odom.odom = odomFactors[t - 1]->measured();
+            timestep.odom.noise = odomFactors[t - 1]->noiseModel();
+        }
+        else
+        {
             timestep.odom.odom = POSE();
         }
 
         // Extract measurements from current pose
-        while (curr_measurement < tot_num_measurements && symbolIndex(measFactors[curr_measurement]->key1()) == t) {
+        while (curr_measurement < tot_num_measurements && symbolIndex(measFactors[curr_measurement]->key1()) == t)
+        {
             slam::Measurement<POINT> meas;
             meas.measurement = measFactors[curr_measurement]->measured();
             meas.noise = measFactors[curr_measurement]->noiseModel();
             timestep.measurements.push_back(meas);
             curr_measurement++;
         }
-        
+
         timesteps.push_back(timestep);
     }
 
     return timesteps;
 }
 
-int main(const int argc, const char *argv[])
+int main(int argc, char **argv)
 {
+      google::InitGoogleLogging(argv[0]);
+    google::ParseCommandLineFlags(&argc, &argv, true);
+    google::InstallFailureSignalHandler();
     // default
     string g2oFile = findExampleDataFile("noisyToyGraph.txt");
     bool is3D = false;
@@ -117,28 +126,42 @@ int main(const int argc, const char *argv[])
     Values::shared_ptr initial;
     boost::tie(graph, initial) = readG2owithLmks(g2oFile, is3D, "none");
     auto [odomFactorIdx, measFactorIdx] = findFactors(odomFactors2d, odomFactors3d, measFactors2d, measFactors3d, graph);
+    int optimization_rate = 5; // Optimize every n times
     if (is3D)
     {
+        double ic_prob = 0.9888910034617577; // chi2.cdf(3**2, 2)
+        gtsam::Vector pose_prior_noise = (
+            gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4 
+        ).finished();
+        pose_prior_noise = pose_prior_noise.array().sqrt().matrix(); // Calc sigmas from variances
         vector<Timestep3D> timesteps = convert_into_timesteps(odomFactors3d, measFactors3d);
+        slam::SLAM3D slam_sys{};
+        // double ic_prob, int optimization_rate, const gtsam::Vector &pose_prior_noise, const gtsam::Vector &lmk_prior_noise
+        slam_sys.initialize(ic_prob, optimization_rate, pose_prior_noise);
+        int tot_timesteps = timesteps.size();
         for (const auto& timestep : timesteps) {
-            cout << "\n****************************\n";
-            cout << "in timestep " << timestep.step <<":\n";
-            cout << "odom:\n" << timestep.odom.odom << "\n";
-            cout << "measurements:\n";
-            for (const auto measurement : timestep.measurements) {
-                cout << measurement.measurement << "\n\n";
-            }
+            cout << "Processing timestep " << timestep.step << ", " << double(timestep.step)/tot_timesteps*100.0 << "\% complete\n";
+            slam_sys.processOdomMeasurementScan(
+                timestep.odom, timestep.measurements
+            );
         }
     } else {
+        double ic_prob = 0.9707091134651118; // chi2.cdf(3**2, 3)
+        gtsam::Vector pose_prior_noise = Vector3(1e-6, 1e-6, 1e-8);
+        pose_prior_noise = pose_prior_noise.array().sqrt().matrix(); // Calc sigmas from variances
+        cout << "Start converting into timesteps!\n";
         vector<Timestep2D> timesteps = convert_into_timesteps(odomFactors2d, measFactors2d);
+        cout << "Done converting into timesteps!\n";
+        slam::SLAM2D slam_sys{};
+        // double ic_prob, int optimization_rate, const gtsam::Vector &pose_prior_noise, const gtsam::Vector &lmk_prior_noise
+        slam_sys.initialize(ic_prob, optimization_rate, pose_prior_noise);
+        cout << "SLAM system initialized!\n";
+        int tot_timesteps = timesteps.size();
         for (const auto& timestep : timesteps) {
-            cout << "\n****************************\n";
-            cout << "in timestep " << timestep.step <<":\n";
-            cout << "odom:\n" << timestep.odom.odom << "\n";
-            cout << "measurements:\n";
-            for (const auto measurement : timestep.measurements) {
-                cout << measurement.measurement << "\n\n";
-            }
+            cout << "Processing timestep " << timestep.step << ", " << double(timestep.step)/tot_timesteps*100.0 << "\% complete\n";
+            slam_sys.processOdomMeasurementScan(
+                timestep.odom, timestep.measurements
+            );
         }
     }
 }

@@ -124,5 +124,6 @@ target_link_libraries(slam_g2o_file
   Eigen3::Eigen
   # slam
   gtsam
+  jcbb
   glog::glog
 )

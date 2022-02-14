@@ -5,6 +5,7 @@
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Symbol.h>
+#include <gtsam/geometry/Pose3.h>
 #include <vector>
 
 #include "slam/types.h"
@@ -32,7 +33,7 @@ namespace slam
         gtsam::noiseModel::Diagonal::shared_ptr pose_prior_noise_;
         gtsam::noiseModel::Diagonal::shared_ptr lmk_prior_noise_;
 
-        gtsam::FastVector<jcbb::Hypothesis> hypotheses_;
+        // gtsam::FastVector<jcbb::Hypothesis> hypotheses_;
 
         unsigned long int latest_pose_key_;
         POSE latest_pose_;
@@ -59,12 +60,15 @@ namespace slam
         void optimize();
         const gtsam::Values &currentEstimates() const;
         void processOdomMeasurementScan(const Odometry<POSE> &odom, const gtsam::FastVector<Measurement<POINT>> &measurements);
-        void initialize(double ic_prob, int optimization_rate, const gtsam::Vector &pose_prior_noise, const gtsam::Vector &lmk_prior_noise);
+        void initialize(double ic_prob, int optimization_rate, const gtsam::Vector &pose_prior_noise);//, const gtsam::Vector &lmk_prior_noise);
         gtsam::FastVector<POSE> getTrajectory() const;
         gtsam::FastVector<POINT> getLandmarkPoints() const;
-        const gtsam::FastVector<jcbb::Hypothesis> &getChosenHypotheses() const { return hypotheses_; }
+        // const gtsam::FastVector<jcbb::Hypothesis> &getChosenHypotheses() const { return hypotheses_; }
         // AssociationMethod getAssociationMethod() const { return association_method_; }
     };
+
+    using SLAM3D = SLAM<gtsam::Pose3, gtsam::Point3>;
+    using SLAM2D = SLAM<gtsam::Pose2, gtsam::Point2>;
 
 } // namespace slam
 

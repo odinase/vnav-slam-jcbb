@@ -25,7 +25,7 @@ namespace ml
     auto poses = estimates_.filter(gtsam::Symbol::ChrTest('x'));
     int last_pose = poses.size() - 1; // Assuming first pose is 0
     x_key_ = X(last_pose);
-    x_pose_ = estimates.at<gtsam::Pose3>(x_key_);
+    x_pose_ = estimates.at<POSE>(x_key_);
   }
 
   template<class POSE, class POINT>

@@ -25,10 +25,10 @@ namespace slam
   }
 
   template<class POSE, class POINT>
-  void SLAM<POSE, POINT>::initialize(double ic_prob, int optimization_rate, const gtsam::Vector &pose_prior_noise, const gtsam::Vector &lmk_prior_noise)
+  void SLAM<POSE, POINT>::initialize(double ic_prob, int optimization_rate, const gtsam::Vector &pose_prior_noise)//, const gtsam::Vector &lmk_prior_noise)
   {
-  pose_prior_noise_ = pose_prior_noise;
-    lmk_prior_noise_ = lmk_prior_noise;
+  pose_prior_noise_ = gtsam::noiseModel::Diagonal::Sigmas(pose_prior_noise);
+    // lmk_prior_noise_ = lmk_prior_noise;
     ic_prob_ = ic_prob;
     optimization_rate_ = optimization_rate;
 
@@ -106,12 +106,6 @@ namespace slam
   {
     static int num = 1;
     addOdom(odom);
-    if (num % optimization_rate_ != 0)
-    {
-      num++;
-      return;
-    }
-    num = 1;
 
     gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
 
@@ -142,7 +136,7 @@ namespace slam
     //   h = gt_.associate();
     // }
 
-      ml::MaximumLikelihood ml_(estimates_, marginals, measurements, ic_prob_);
+      ml::MaximumLikelihood<POSE, POINT> ml_(estimates_, marginals, measurements, ic_prob_);
       h = ml_.associate();
 
     const auto &assos = h.associations();
@@ -180,16 +174,22 @@ namespace slam
         incrementLatestLandmarkKey();
       }
       // We just inserted our first landmark, set prior
-      if (latest_landmark_key_ == 1)
-      {
-        graph_.add(gtsam::PriorFactor<POINT>(L(0), meas_world, lmk_prior_noise_));
-      }
+      // if (latest_landmark_key_ == 1)
+      // {
+      //   graph_.add(gtsam::PriorFactor<POINT>(L(0), meas_world, lmk_prior_noise_));
+      // }
     }
-    if (h.num_associations() > 0)
-    {
-      hypotheses_.push_back(h);
-    }
+    // if (h.num_associations() > 0)
+    // {
+    //   hypotheses_.push_back(h);
+    // }
 
+    if (num % optimization_rate_ != 0)
+    {
+      num++;
+      return;
+    }
+    num = 1;
     gtsam::DoglegParams params;
     params.setAbsoluteErrorTol(1e-08);
     estimates_ =
