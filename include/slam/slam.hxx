@@ -55,7 +55,12 @@ namespace slam
 
     // Add prior on first pose
     graph_.add(gtsam::PriorFactor<POSE>(X(latest_pose_key_), POSE(), pose_prior_noise_));
-    estimates_.insert(X(latest_pose_key_), POSE());
+    initial_estimates_.insert(X(latest_pose_key_), POSE());
+    gtsam::ISAM2Params isam_params;
+  isam_params.relinearizeThreshold = 0.01;
+  isam_params.relinearizeSkip = 1;
+  isam_params.setOptimizationParams(gtsam::ISAM2DoglegParams());
+  isam_ = gtsam::ISAM2(isam_params);
 
   //   association_method_ = association_method;
   //   std::cout << "Using association method ";
@@ -107,7 +112,8 @@ namespace slam
     static int num = 1;
     addOdom(odom);
 
-    gtsam::Marginals marginals = gtsam::Marginals(graph_, estimates_);
+    const gtsam::NonlinearFactorGraph& nfg = isam_.getFactorsUnsafe(); // unsafe???
+    gtsam::Marginals marginals = gtsam::Marginals(nfg, estimates_);
 
     jcbb::Hypothesis h = jcbb::Hypothesis::empty_hypothesis();
     // switch (association_method_)
@@ -184,16 +190,23 @@ namespace slam
     //   hypotheses_.push_back(h);
     // }
 
-    if (num % optimization_rate_ != 0)
-    {
-      num++;
-      return;
-    }
-    num = 1;
-    gtsam::DoglegParams params;
-    params.setAbsoluteErrorTol(1e-08);
-    estimates_ =
-        gtsam::DoglegOptimizer(graph_, estimates_, params).optimize();
+    // if (num % optimization_rate_ != 0)
+    // {
+    //   num++;
+    //   return;
+    // }
+    // num = 1;
+ 
+    isam_.update(graph_, initial_estimates_);
+    isam_.update();
+
+    estimates_ = isam_.calculateEstimate();
+
+    graph_.resize(0);
+    initial_estimates_.clear();
+
+    // estimates_ =
+    //     gtsam::DoglegOptimizer(graph_, estimates_, params).optimize();
   }
 
   template<class POSE, class POINT>
@@ -201,7 +214,7 @@ namespace slam
   {
     graph_.add(gtsam::BetweenFactor<POSE>(X(latest_pose_key_), X(latest_pose_key_ + 1), odom.odom, odom.noise));
     POSE this_pose = latest_pose_ * odom.odom;
-    estimates_.insert(X(latest_pose_key_ + 1), this_pose);
+    initial_estimates_.insert(X(latest_pose_key_ + 1), this_pose);
     latest_pose_ = this_pose;
     incrementLatestPoseKey();
   }

@@ -29,7 +29,9 @@ namespace slam
     {
     private:
         gtsam::NonlinearFactorGraph graph_;
+        gtsam::ISAM2 isam_;
         gtsam::Values estimates_;
+        gtsam::Values initial_estimates_;
         gtsam::noiseModel::Diagonal::shared_ptr pose_prior_noise_;
         gtsam::noiseModel::Diagonal::shared_ptr lmk_prior_noise_;
 
